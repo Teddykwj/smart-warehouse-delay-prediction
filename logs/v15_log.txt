@@ -1,0 +1,303 @@
+docker compose up
+WARN[0000] No services to build                         
+Attaching to daycon-xgb-gpu
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | ==========
+daycon-xgb-gpu  | == CUDA ==
+daycon-xgb-gpu  | ==========
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | CUDA Version 12.8.1
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | Container image Copyright (c) 2016-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | This container image and its contents are governed by the NVIDIA Deep Learning Container License.
+daycon-xgb-gpu  | By pulling and using the container, you accept the terms and conditions of this license:
+daycon-xgb-gpu  | https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | train (250000, 108), test (50000, 107)
+daycon-xgb-gpu  | after FE: train (250000, 161), test (50000, 160)
+daycon-xgb-gpu  | features: 159
+daycon-xgb-gpu  | features after TE: 163
+daycon-xgb-gpu  | encoded cat cols: ['layout_id', 'scenario_id', 'layout_type']
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | === XGBoost Optuna ===
+daycon-xgb-gpu  |   Trial   0 | MAE=9.132293 | best=9.132293
+daycon-xgb-gpu  |   Trial   1 | MAE=9.126536 | best=9.126536
+daycon-xgb-gpu  |   Trial   2 | MAE=9.108501 | best=9.108501
+daycon-xgb-gpu  |   Trial   3 | MAE=9.139911 | best=9.108501
+daycon-xgb-gpu  |   Trial   4 | MAE=9.120779 | best=9.108501
+daycon-xgb-gpu  |   Trial   5 | MAE=9.129387 | best=9.108501
+daycon-xgb-gpu  |   Trial   6 | MAE=9.128772 | best=9.108501
+daycon-xgb-gpu  |   Trial   7 | MAE=9.137165 | best=9.108501
+daycon-xgb-gpu  |   Trial   8 | MAE=9.136815 | best=9.108501
+daycon-xgb-gpu  |   Trial   9 | MAE=9.108842 | best=9.108501
+daycon-xgb-gpu  |   Trial  10 | MAE=9.104227 | best=9.104227
+daycon-xgb-gpu  |   Trial  11 | MAE=9.106447 | best=9.104227
+daycon-xgb-gpu  |   Trial  12 | MAE=9.107263 | best=9.104227
+daycon-xgb-gpu  |   Trial  13 | MAE=9.099266 | best=9.099266
+daycon-xgb-gpu  |   Trial  14 | MAE=9.111231 | best=9.099266
+daycon-xgb-gpu  |   Trial  15 | MAE=9.099130 | best=9.099130
+daycon-xgb-gpu  |   Trial  16 | MAE=9.101871 | best=9.099130
+daycon-xgb-gpu  |   Trial  17 | MAE=9.102671 | best=9.099130
+daycon-xgb-gpu  |   Trial  18 | MAE=9.104214 | best=9.099130
+daycon-xgb-gpu  |   Trial  19 | MAE=9.111548 | best=9.099130
+daycon-xgb-gpu  |   Trial  20 | MAE=9.102134 | best=9.099130
+daycon-xgb-gpu  |   Trial  21 | MAE=9.105104 | best=9.099130
+daycon-xgb-gpu  |   Trial  22 | MAE=9.100402 | best=9.099130
+daycon-xgb-gpu  |   Trial  23 | MAE=9.102667 | best=9.099130
+daycon-xgb-gpu  |   Trial  24 | MAE=9.102877 | best=9.099130
+daycon-xgb-gpu  |   Trial  25 | MAE=9.103032 | best=9.099130
+daycon-xgb-gpu  |   Trial  26 | MAE=9.111310 | best=9.099130
+daycon-xgb-gpu  |   Trial  27 | MAE=9.107944 | best=9.099130
+daycon-xgb-gpu  |   Trial  28 | MAE=9.103268 | best=9.099130
+daycon-xgb-gpu  |   Trial  29 | MAE=9.101658 | best=9.099130
+daycon-xgb-gpu  |   Trial  30 | MAE=9.104149 | best=9.099130
+daycon-xgb-gpu  |   Trial  31 | MAE=9.102639 | best=9.099130
+daycon-xgb-gpu  |   Trial  32 | MAE=9.101015 | best=9.099130
+daycon-xgb-gpu  |   Trial  33 | MAE=9.120660 | best=9.099130
+daycon-xgb-gpu  |   Trial  34 | MAE=9.104534 | best=9.099130
+daycon-xgb-gpu  |   Trial  35 | MAE=9.108290 | best=9.099130
+daycon-xgb-gpu  |   Trial  36 | MAE=9.104432 | best=9.099130
+daycon-xgb-gpu  |   Trial  37 | MAE=9.101589 | best=9.099130
+daycon-xgb-gpu  |   Trial  38 | MAE=9.118775 | best=9.099130
+daycon-xgb-gpu  |   Trial  39 | MAE=9.118256 | best=9.099130
+daycon-xgb-gpu  |   Trial  40 | MAE=9.119223 | best=9.099130
+daycon-xgb-gpu  |   Trial  41 | MAE=9.102045 | best=9.099130
+daycon-xgb-gpu  |   Trial  42 | MAE=9.100052 | best=9.099130
+daycon-xgb-gpu  |   Trial  43 | MAE=9.102311 | best=9.099130
+daycon-xgb-gpu  |   Trial  44 | MAE=9.094993 | best=9.094993
+daycon-xgb-gpu  |   Trial  45 | MAE=9.103077 | best=9.094993
+daycon-xgb-gpu  |   Trial  46 | MAE=9.096243 | best=9.094993
+daycon-xgb-gpu  |   Trial  47 | MAE=9.104835 | best=9.094993
+daycon-xgb-gpu  |   Trial  48 | MAE=9.102069 | best=9.094993
+daycon-xgb-gpu  |   Trial  49 | MAE=9.102002 | best=9.094993
+daycon-xgb-gpu  |   Trial  50 | MAE=9.100589 | best=9.094993
+daycon-xgb-gpu  |   Trial  51 | MAE=9.102765 | best=9.094993
+daycon-xgb-gpu  |   Trial  52 | MAE=9.100265 | best=9.094993
+daycon-xgb-gpu  |   Trial  53 | MAE=9.095032 | best=9.094993
+daycon-xgb-gpu  |   Trial  54 | MAE=9.103938 | best=9.094993
+daycon-xgb-gpu  |   Trial  55 | MAE=9.100552 | best=9.094993
+daycon-xgb-gpu  |   Trial  56 | MAE=9.099200 | best=9.094993
+daycon-xgb-gpu  |   Trial  57 | MAE=9.102124 | best=9.094993
+daycon-xgb-gpu  |   Trial  58 | MAE=9.103672 | best=9.094993
+daycon-xgb-gpu  |   Trial  59 | MAE=9.108137 | best=9.094993
+daycon-xgb-gpu  | XGB best CV: 9.094993
+daycon-xgb-gpu  | XGB best params: {'n_estimators': 6500, 'learning_rate': 0.010828570124215505, 'max_depth': 9, 'min_child_weight': 6.939330200669265, 'subsample': 0.7867107384090942, 'colsample_bytree': 0.7794398130223866, 'colsample_bylevel': 0.9120233273238735, 'reg_alpha': 1.4503790885093544, 'reg_lambda': 0.009218234334338675, 'gamma': 7.428018344090955, 'max_bin': 320}
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | === LightGBM Optuna ===
+daycon-xgb-gpu  |   Trial   0 | MAE=9.118417 | best=9.118417
+daycon-xgb-gpu  |   Trial   1 | MAE=9.124217 | best=9.118417
+daycon-xgb-gpu  |   Trial   2 | MAE=9.110067 | best=9.110067
+daycon-xgb-gpu  |   Trial   3 | MAE=9.130356 | best=9.110067
+daycon-xgb-gpu  |   Trial   4 | MAE=9.131035 | best=9.110067
+daycon-xgb-gpu  |   Trial   5 | MAE=9.116321 | best=9.110067
+daycon-xgb-gpu  |   Trial   6 | MAE=9.099204 | best=9.099204
+daycon-xgb-gpu  |   Trial   7 | MAE=9.132040 | best=9.099204
+daycon-xgb-gpu  |   Trial   8 | MAE=9.115479 | best=9.099204
+daycon-xgb-gpu  |   Trial   9 | MAE=9.114662 | best=9.099204
+daycon-xgb-gpu  |   Trial  10 | MAE=9.106450 | best=9.099204
+daycon-xgb-gpu  |   Trial  11 | MAE=9.099630 | best=9.099204
+daycon-xgb-gpu  |   Trial  12 | MAE=9.102576 | best=9.099204
+daycon-xgb-gpu  |   Trial  13 | MAE=9.103676 | best=9.099204
+daycon-xgb-gpu  |   Trial  14 | MAE=9.103608 | best=9.099204
+daycon-xgb-gpu  |   Trial  15 | MAE=9.112677 | best=9.099204
+daycon-xgb-gpu  |   Trial  16 | MAE=9.102355 | best=9.099204
+daycon-xgb-gpu  |   Trial  17 | MAE=9.106476 | best=9.099204
+daycon-xgb-gpu  |   Trial  18 | MAE=9.102526 | best=9.099204
+daycon-xgb-gpu  |   Trial  19 | MAE=9.115893 | best=9.099204
+daycon-xgb-gpu  |   Trial  20 | MAE=9.101887 | best=9.099204
+daycon-xgb-gpu  |   Trial  21 | MAE=9.100328 | best=9.099204
+daycon-xgb-gpu  |   Trial  22 | MAE=9.100712 | best=9.099204
+daycon-xgb-gpu  |   Trial  23 | MAE=9.106255 | best=9.099204
+daycon-xgb-gpu  |   Trial  24 | MAE=9.101553 | best=9.099204
+daycon-xgb-gpu  |   Trial  25 | MAE=9.098836 | best=9.098836
+daycon-xgb-gpu  |   Trial  26 | MAE=9.104120 | best=9.098836
+daycon-xgb-gpu  |   Trial  27 | MAE=9.120811 | best=9.098836
+daycon-xgb-gpu  |   Trial  28 | MAE=9.104792 | best=9.098836
+daycon-xgb-gpu  |   Trial  29 | MAE=9.103986 | best=9.098836
+daycon-xgb-gpu  |   Trial  30 | MAE=9.119210 | best=9.098836
+daycon-xgb-gpu  |   Trial  31 | MAE=9.100096 | best=9.098836
+daycon-xgb-gpu  |   Trial  32 | MAE=9.100961 | best=9.098836
+daycon-xgb-gpu  |   Trial  33 | MAE=9.101305 | best=9.098836
+daycon-xgb-gpu  |   Trial  34 | MAE=9.100024 | best=9.098836
+daycon-xgb-gpu  |   Trial  35 | MAE=9.099950 | best=9.098836
+daycon-xgb-gpu  |   Trial  36 | MAE=9.102577 | best=9.098836
+daycon-xgb-gpu  |   Trial  37 | MAE=9.112414 | best=9.098836
+daycon-xgb-gpu  |   Trial  38 | MAE=9.097430 | best=9.097430
+daycon-xgb-gpu  |   Trial  39 | MAE=9.100802 | best=9.097430
+daycon-xgb-gpu  |   Trial  40 | MAE=9.110708 | best=9.097430
+daycon-xgb-gpu  |   Trial  41 | MAE=9.098449 | best=9.097430
+daycon-xgb-gpu  |   Trial  42 | MAE=9.099087 | best=9.097430
+daycon-xgb-gpu  |   Trial  43 | MAE=9.102616 | best=9.097430
+daycon-xgb-gpu  |   Trial  44 | MAE=9.104080 | best=9.097430
+daycon-xgb-gpu  |   Trial  45 | MAE=9.100914 | best=9.097430
+daycon-xgb-gpu  |   Trial  46 | MAE=9.102228 | best=9.097430
+daycon-xgb-gpu  |   Trial  47 | MAE=9.100000 | best=9.097430
+daycon-xgb-gpu  |   Trial  48 | MAE=9.121637 | best=9.097430
+daycon-xgb-gpu  |   Trial  49 | MAE=9.099522 | best=9.097430
+daycon-xgb-gpu  |   Trial  50 | MAE=9.102890 | best=9.097430
+daycon-xgb-gpu  |   Trial  51 | MAE=9.095850 | best=9.095850
+daycon-xgb-gpu  |   Trial  52 | MAE=9.102965 | best=9.095850
+daycon-xgb-gpu  |   Trial  53 | MAE=9.097918 | best=9.095850
+daycon-xgb-gpu  |   Trial  54 | MAE=9.103075 | best=9.095850
+daycon-xgb-gpu  |   Trial  55 | MAE=9.101577 | best=9.095850
+daycon-xgb-gpu  |   Trial  56 | MAE=9.101365 | best=9.095850
+daycon-xgb-gpu  |   Trial  57 | MAE=9.101033 | best=9.095850
+daycon-xgb-gpu  |   Trial  58 | MAE=9.131400 | best=9.095850
+daycon-xgb-gpu  |   Trial  59 | MAE=9.101561 | best=9.095850
+daycon-xgb-gpu  | LGB best CV: 9.095850
+daycon-xgb-gpu  | LGB best params: {'n_estimators': 4250, 'learning_rate': 0.010615265097077302, 'max_depth': 9, 'num_leaves': 282, 'min_child_samples': 76, 'subsample': 0.8315628989461482, 'colsample_bytree': 0.551429866331635, 'reg_alpha': 0.023497355318440577, 'reg_lambda': 0.04924409370583931, 'min_split_gain': 0.7752416407294445}
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | ==============================
+daycon-xgb-gpu  | XGBoost Final CV
+daycon-xgb-gpu  | ==============================
+daycon-xgb-gpu  | [0]   validation_0-mae:1.69327
+daycon-xgb-gpu  | [100] validation_0-mae:1.07947
+daycon-xgb-gpu  | [200] validation_0-mae:0.97844
+daycon-xgb-gpu  | [300] validation_0-mae:0.96242
+daycon-xgb-gpu  | [400] validation_0-mae:0.95970
+daycon-xgb-gpu  | [500] validation_0-mae:0.95900
+daycon-xgb-gpu  | [600] validation_0-mae:0.95869
+daycon-xgb-gpu  | [700] validation_0-mae:0.95851
+daycon-xgb-gpu  | [800] validation_0-mae:0.95846
+daycon-xgb-gpu  | [873] validation_0-mae:0.95855
+daycon-xgb-gpu  |   Fold 1 MAE: 8.742574
+daycon-xgb-gpu  | [0]   validation_0-mae:1.71068
+daycon-xgb-gpu  | [100] validation_0-mae:1.08928
+daycon-xgb-gpu  | [200] validation_0-mae:0.98800
+daycon-xgb-gpu  | [300] validation_0-mae:0.97211
+daycon-xgb-gpu  | [400] validation_0-mae:0.96878
+daycon-xgb-gpu  | [500] validation_0-mae:0.96802
+daycon-xgb-gpu  | [600] validation_0-mae:0.96766
+daycon-xgb-gpu  | [651] validation_0-mae:0.96764
+daycon-xgb-gpu  |   Fold 2 MAE: 9.003587
+daycon-xgb-gpu  | [0]   validation_0-mae:1.71072
+daycon-xgb-gpu  | [100] validation_0-mae:1.09718
+daycon-xgb-gpu  | [200] validation_0-mae:0.99982
+daycon-xgb-gpu  | [300] validation_0-mae:0.98371
+daycon-xgb-gpu  | [400] validation_0-mae:0.98101
+daycon-xgb-gpu  | [500] validation_0-mae:0.97995
+daycon-xgb-gpu  | [600] validation_0-mae:0.97930
+daycon-xgb-gpu  | [700] validation_0-mae:0.97921
+daycon-xgb-gpu  | [800] validation_0-mae:0.97900
+daycon-xgb-gpu  | [900] validation_0-mae:0.97883
+daycon-xgb-gpu  | [1000]        validation_0-mae:0.97882
+daycon-xgb-gpu  | [1100]        validation_0-mae:0.97868
+daycon-xgb-gpu  | [1200]        validation_0-mae:0.97848
+daycon-xgb-gpu  | [1291]        validation_0-mae:0.97864
+daycon-xgb-gpu  |   Fold 3 MAE: 9.201896
+daycon-xgb-gpu  | [0]   validation_0-mae:1.72192
+daycon-xgb-gpu  | [100] validation_0-mae:1.10362
+daycon-xgb-gpu  | [200] validation_0-mae:1.00540
+daycon-xgb-gpu  | [300] validation_0-mae:0.99080
+daycon-xgb-gpu  | [400] validation_0-mae:0.98789
+daycon-xgb-gpu  | [500] validation_0-mae:0.98712
+daycon-xgb-gpu  | [600] validation_0-mae:0.98672
+daycon-xgb-gpu  | [700] validation_0-mae:0.98655
+daycon-xgb-gpu  | [800] validation_0-mae:0.98644
+daycon-xgb-gpu  | [900] validation_0-mae:0.98634
+daycon-xgb-gpu  | [939] validation_0-mae:0.98627
+daycon-xgb-gpu  |   Fold 4 MAE: 9.229084
+daycon-xgb-gpu  | [0]   validation_0-mae:1.73313
+daycon-xgb-gpu  | [100] validation_0-mae:1.10967
+daycon-xgb-gpu  | [200] validation_0-mae:1.00983
+daycon-xgb-gpu  | [300] validation_0-mae:0.99392
+daycon-xgb-gpu  | [400] validation_0-mae:0.99056
+daycon-xgb-gpu  | [500] validation_0-mae:0.98917
+daycon-xgb-gpu  | [600] validation_0-mae:0.98830
+daycon-xgb-gpu  | [700] validation_0-mae:0.98732
+daycon-xgb-gpu  | [800] validation_0-mae:0.98685
+daycon-xgb-gpu  | [900] validation_0-mae:0.98646
+daycon-xgb-gpu  | [1000]        validation_0-mae:0.98635
+daycon-xgb-gpu  | [1100]        validation_0-mae:0.98616
+daycon-xgb-gpu  | [1167]        validation_0-mae:0.98618
+daycon-xgb-gpu  |   Fold 5 MAE: 9.297824
+daycon-xgb-gpu  |   CV MAE: 9.094993  RMSE: 23.154750
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | ==============================
+daycon-xgb-gpu  | LightGBM Final CV
+daycon-xgb-gpu  | ==============================
+daycon-xgb-gpu  |   Fold 1 MAE: 8.743791
+daycon-xgb-gpu  |   Fold 2 MAE: 9.002030
+daycon-xgb-gpu  |   Fold 3 MAE: 9.227747
+daycon-xgb-gpu  |   Fold 4 MAE: 9.238076
+daycon-xgb-gpu  |   Fold 5 MAE: 9.291177
+daycon-xgb-gpu  |   CV MAE: 9.100564  RMSE: 23.254641
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | XGB CV MAE : 9.094993
+daycon-xgb-gpu  | LGB CV MAE : 9.100564
+daycon-xgb-gpu  | Optimal XGB weight: 0.64  →  Blend CV MAE: 9.091912
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | Top 20 XGB features:
+daycon-xgb-gpu  |                     feature  importance
+daycon-xgb-gpu  |          availability_ratio    0.306938
+daycon-xgb-gpu  |        charging_ratio_log1p    0.172556
+daycon-xgb-gpu  |           charging_ratio_sq    0.121869
+daycon-xgb-gpu  |         charging_ratio_cube    0.118819
+daycon-xgb-gpu  |              charging_ratio    0.097173
+daycon-xgb-gpu  |            layout_x_density    0.023236
+daycon-xgb-gpu  |            pack_utilization    0.010172
+daycon-xgb-gpu  |   intersection_x_congestion    0.007930
+daycon-xgb-gpu  |            max_zone_density    0.007893
+daycon-xgb-gpu  |       charging_x_delay_risk    0.005455
+daycon-xgb-gpu  |            congestion_score    0.003635
+daycon-xgb-gpu  |      order_per_pack_station    0.003505
+daycon-xgb-gpu  |        dispersion_x_density    0.002685
+daycon-xgb-gpu  |   charging_x_layout_density    0.002439
+daycon-xgb-gpu  |              robot_charging    0.002321
+daycon-xgb-gpu  |                  robot_idle    0.002315
+daycon-xgb-gpu  | congestion_per_intersection    0.002196
+daycon-xgb-gpu  |                  idle_ratio    0.001947
+daycon-xgb-gpu  |          layout_compactness    0.001508
+daycon-xgb-gpu  |           pack_util_x_order    0.001456
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | Top 20 LGB features:
+daycon-xgb-gpu  |                feature  importance
+daycon-xgb-gpu  |            scenario_id      7428.6
+daycon-xgb-gpu  |      sku_concentration      6877.6
+daycon-xgb-gpu  |          te__layout_id      5961.2
+daycon-xgb-gpu  |      avg_trip_distance      5733.2
+daycon-xgb-gpu  |        zone_dispersion      4454.8
+daycon-xgb-gpu  |     layout_compactness      4209.8
+daycon-xgb-gpu  |         floor_area_sqm      3799.0
+daycon-xgb-gpu  |              layout_id      3742.2
+daycon-xgb-gpu  |        aisle_width_avg      3624.4
+daycon-xgb-gpu  |  manual_override_ratio      3619.4
+daycon-xgb-gpu  |          one_way_ratio      3530.0
+daycon-xgb-gpu  |    avg_items_per_order      3434.8
+daycon-xgb-gpu  |       ceiling_height_m      3282.4
+daycon-xgb-gpu  |     pack_station_count      3216.8
+daycon-xgb-gpu  |   fire_sprinkler_count      3128.6
+daycon-xgb-gpu  |     building_age_years      2977.8
+daycon-xgb-gpu  |     intersection_count      2847.8
+daycon-xgb-gpu  | order_per_pack_station      2825.6
+daycon-xgb-gpu  |        te__layout_type      2723.0
+daycon-xgb-gpu  |            robot_total      2595.0
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | Top 10 worst layouts (blend):
+daycon-xgb-gpu  | layout_id
+daycon-xgb-gpu  | WH_051    35.111622
+daycon-xgb-gpu  | WH_217    34.488036
+daycon-xgb-gpu  | WH_073    34.438756
+daycon-xgb-gpu  | WH_049    33.148445
+daycon-xgb-gpu  | WH_185    30.606323
+daycon-xgb-gpu  | WH_291    30.028153
+daycon-xgb-gpu  | WH_098    30.009531
+daycon-xgb-gpu  | WH_140    29.810098
+daycon-xgb-gpu  | WH_209    27.382350
+daycon-xgb-gpu  | WH_058    27.012883
+daycon-xgb-gpu  | Name: abs_err, dtype: float64
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | Saved: submission_ensemble_v2.csv
+daycon-xgb-gpu  | Saved: oof_ensemble_v2.csv
+daycon-xgb-gpu  | Saved: feature_importance_xgb_v2.csv
+daycon-xgb-gpu  | Saved: feature_importance_lgb_v2.csv
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | === Sanity Check ===
+daycon-xgb-gpu  | y_raw            min=0.000  mean=18.962  max=715.858  nan=0
+daycon-xgb-gpu  | xgb_oof          min=0.000  mean=14.926  max=84.617  nan=0
+daycon-xgb-gpu  | lgb_oof          min=0.000  mean=14.872  max=74.825  nan=0
+daycon-xgb-gpu  | final_pred       min=0.025  mean=17.244  max=57.635  nan=0
+daycon-xgb-gpu exited with code 0

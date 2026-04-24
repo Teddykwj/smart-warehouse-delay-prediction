@@ -1,0 +1,259 @@
+docker compose up
+WARN[0000] No services to build                         
+WARN[0000] Found orphan containers ([daycon-lgbm-gpu]) for this project. If you removed or renamed this service in your compose file, you can run this command with the --remove-orphans flag to clean it up. 
+Attaching to daycon-xgb-gpu
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | ==========
+daycon-xgb-gpu  | == CUDA ==
+daycon-xgb-gpu  | ==========
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | CUDA Version 12.8.1
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | Container image Copyright (c) 2016-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | This container image and its contents are governed by the NVIDIA Deep Learning Container License.
+daycon-xgb-gpu  | By pulling and using the container, you accept the terms and conditions of this license:
+daycon-xgb-gpu  | https://developer.nvidia.com/ngc/nvidia-deep-learning-container-license
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | A copy of this license is made available in this container at /NGC-DL-CONTAINER-LICENSE for your convenience.
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | train shape: (250000, 94)
+daycon-xgb-gpu  | test shape : (50000, 93)
+daycon-xgb-gpu  | layout shape: (300, 15)
+daycon-xgb-gpu  | after merge - train: (250000, 108)
+daycon-xgb-gpu  | after merge - test : (50000, 107)
+daycon-xgb-gpu  | [flag] high_charging_flag threshold   : 0.714286
+daycon-xgb-gpu  | [flag] dense_layout_flag threshold    : 0.133390
+daycon-xgb-gpu  | [flag] high_congestion_flag threshold : 33.670000
+daycon-xgb-gpu  | [flag] heavy_load_flag threshold      : 18.999992
+daycon-xgb-gpu  | after feature engineering - train: (250000, 145)
+daycon-xgb-gpu  | after feature engineering - test : (50000, 144)
+daycon-xgb-gpu  | derived feature mode: lite
+daycon-xgb-gpu  | kept derived features (10): ['charging_ratio', 'layout_x_density', 'idle_ratio', 'intersection_x_congestion', 'order_per_pack_station', 'charging_pressure', 'dispersion_x_density', 'order_per_active_robot', 'active_ratio', 'battery_x_congestion']
+daycon-xgb-gpu  | dropped derived features (27): ['utilization_gap', 'congestion_x_density', 'collision_x_density', 'blocked_x_congestion', 'blocked_x_collision', 'fault_x_congestion', 'fault_x_density', 'order_per_robot', 'sku_per_order', 'battery_risk_score', 'trip_x_recovery', 'idle_minus_active', 'idle_plus_charging', 'high_charging_flag', 'dense_layout_flag', 'high_congestion_flag', 'heavy_load_flag', 'charging_robot_per_charger', 'idle_robot_per_charger', 'order_per_charger', 'charging_x_congestion_flag', 'load_x_dense_layout_flag', 'idle_x_high_charging_flag', 'charging_x_dense_layout', 'congestion_x_heavy_load', 'queue_pressure', 'delay_risk_proxy']
+daycon-xgb-gpu  | num features before TE: 116
+daycon-xgb-gpu  | target transform: log1p
+daycon-xgb-gpu  | added OOF target encoding columns: ['te_mean__layout_id', 'te_mean__scenario_id', 'te_mean__layout_type', 'te_mean__layout_scenario']
+daycon-xgb-gpu  | num features after TE: 120
+daycon-xgb-gpu  | encoded categorical columns: ['layout_id', 'scenario_id', 'layout_type']
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | ==============================
+daycon-xgb-gpu  | Optuna tuning start
+daycon-xgb-gpu  | ==============================
+daycon-xgb-gpu  | [I 2026-04-21 06:48:07,762] A new study created in memory with name: xgb_groupkfold_mae_log1p_with_te
+daycon-xgb-gpu  | [I 2026-04-21 06:48:48,699] Trial 0 finished with value: 9.129812933108033 and parameters: {'n_estimators': 3500, 'learning_rate': 0.033201352533921126, 'max_depth': 9, 'min_child_weight': 3.0840190790995017, 'subsample': 0.7987222368530924, 'colsample_bytree': 0.7018392328470684, 'reg_alpha': 0.001434715951720141, 'reg_lambda': 0.0396760507705299, 'gamma': 4.603902541101231, 'max_bin': 320}. Best is trial 0 with value: 9.129812933108033.
+daycon-xgb-gpu  | [I 2026-04-21 06:49:22,596] Trial 1 finished with value: 9.123348507388542 and parameters: {'n_estimators': 3000, 'learning_rate': 0.033890621397162146, 'max_depth': 9, 'min_child_weight': 1.9369520370544495, 'subsample': 0.8018189960648521, 'colsample_bytree': 0.7056766313794808, 'reg_alpha': 0.006624310605949983, 'reg_lambda': 0.0037520558551242854, 'gamma': 4.0118075652474054, 'max_bin': 256}. Best is trial 1 with value: 9.123348507388542.
+daycon-xgb-gpu  | [I 2026-04-21 06:49:56,296] Trial 2 finished with value: 9.108445918993514 and parameters: {'n_estimators': 4000, 'learning_rate': 0.013932533639316444, 'max_depth': 7, 'min_child_weight': 2.3316001790371166, 'subsample': 0.8347283981060444, 'colsample_bytree': 0.7899246345950219, 'reg_alpha': 0.0034587052147518095, 'reg_lambda': 0.003489018845491387, 'gamma': 4.573450991017149, 'max_bin': 192}. Best is trial 2 with value: 9.108445918993514.
+daycon-xgb-gpu  | [I 2026-04-21 06:50:34,235] Trial 3 finished with value: 9.108490555297859 and parameters: {'n_estimators': 4000, 'learning_rate': 0.01440308951866881, 'max_depth': 7, 'min_child_weight': 4.701574672845589, 'subsample': 0.8958758439689471, 'colsample_bytree': 0.7931756287363045, 'reg_alpha': 0.00663962307985946, 'reg_lambda': 0.00019634341572933326, 'gamma': 4.894815592792549, 'max_bin': 256}. Best is trial 2 with value: 9.108445918993514.
+daycon-xgb-gpu  | [I 2026-04-21 06:51:01,575] Trial 4 finished with value: 9.109127365604923 and parameters: {'n_estimators': 3000, 'learning_rate': 0.020388367558414826, 'max_depth': 7, 'min_child_weight': 4.4828640660981645, 'subsample': 0.811053597792002, 'colsample_bytree': 0.7727531198095574, 'reg_alpha': 0.006939031266619744, 'reg_lambda': 0.0036324869566766076, 'gamma': 4.4134859777014785, 'max_bin': 192}. Best is trial 2 with value: 9.108445918993514.
+daycon-xgb-gpu  | [I 2026-04-21 06:51:41,719] Trial 5 finished with value: 9.119165761516982 and parameters: {'n_estimators': 4750, 'learning_rate': 0.027512513113291334, 'max_depth': 9, 'min_child_weight': 4.4053200049275185, 'subsample': 0.8517479974573302, 'colsample_bytree': 0.8090623929032363, 'reg_alpha': 0.0017331598058558703, 'reg_lambda': 0.0003872118032174585, 'gamma': 2.6582955111868833, 'max_bin': 256}. Best is trial 2 with value: 9.108445918993514.
+daycon-xgb-gpu  | [I 2026-04-21 06:53:05,278] Trial 6 finished with value: 9.111402144185583 and parameters: {'n_estimators': 3750, 'learning_rate': 0.016044560627522384, 'max_depth': 9, 'min_child_weight': 2.304782729073268, 'subsample': 0.8137121411624857, 'colsample_bytree': 0.7559774516421548, 'reg_alpha': 0.0024007683448156367, 'reg_lambda': 0.025502980701628937, 'gamma': 2.7609272528791977, 'max_bin': 384}. Best is trial 2 with value: 9.108445918993514.
+daycon-xgb-gpu  | [I 2026-04-21 06:53:41,009] Trial 7 finished with value: 9.114056919287737 and parameters: {'n_estimators': 4500, 'learning_rate': 0.014844362216697417, 'max_depth': 7, 'min_child_weight': 4.003858378988947, 'subsample': 0.864822881261714, 'colsample_bytree': 0.7820610035257383, 'reg_alpha': 0.1206800637548396, 'reg_lambda': 0.0001667761543019791, 'gamma': 3.754630049904954, 'max_bin': 192}. Best is trial 2 with value: 9.108445918993514.
+daycon-xgb-gpu  | [I 2026-04-21 06:54:05,730] Trial 8 finished with value: 9.107316947599559 and parameters: {'n_estimators': 4500, 'learning_rate': 0.023385373821620346, 'max_depth': 7, 'min_child_weight': 1.6192897599727816, 'subsample': 0.8173178786058795, 'colsample_bytree': 0.7255256650837446, 'reg_alpha': 0.0931504999849916, 'reg_lambda': 0.008178476574339543, 'gamma': 5.6052445990171424, 'max_bin': 256}. Best is trial 8 with value: 9.107316947599559.
+daycon-xgb-gpu  | [I 2026-04-21 06:54:42,454] Trial 9 finished with value: 9.121885336491083 and parameters: {'n_estimators': 3000, 'learning_rate': 0.02574893859662512, 'max_depth': 9, 'min_child_weight': 2.9482966289536936, 'subsample': 0.8725160615945473, 'colsample_bytree': 0.7491313834910147, 'reg_alpha': 0.0257537352486156, 'reg_lambda': 0.0019170041589170674, 'gamma': 2.588966943604333, 'max_bin': 192}. Best is trial 8 with value: 9.107316947599559.
+daycon-xgb-gpu  | [I 2026-04-21 06:55:22,913] Trial 10 finished with value: 9.114873605432733 and parameters: {'n_estimators': 4500, 'learning_rate': 0.01956777028342133, 'max_depth': 8, 'min_child_weight': 1.5327917070052035, 'subsample': 0.7829336450520396, 'colsample_bytree': 0.728141456175822, 'reg_alpha': 0.3925927978561583, 'reg_lambda': 0.011746931059660688, 'gamma': 5.894265601068082, 'max_bin': 320}. Best is trial 8 with value: 9.107316947599559.
+daycon-xgb-gpu  | [I 2026-04-21 06:56:13,754] Trial 11 finished with value: 9.104989512563746 and parameters: {'n_estimators': 4250, 'learning_rate': 0.012116844435121475, 'max_depth': 8, 'min_child_weight': 1.5718129719241225, 'subsample': 0.834228185159137, 'colsample_bytree': 0.7322976120035796, 'reg_alpha': 0.06158296221819297, 'reg_lambda': 0.0008959776724951625, 'gamma': 5.602059781833333, 'max_bin': 192}. Best is trial 11 with value: 9.104989512563746.
+daycon-xgb-gpu  | [I 2026-04-21 06:57:03,296] Trial 12 finished with value: 9.105698719170814 and parameters: {'n_estimators': 4250, 'learning_rate': 0.012164385847767962, 'max_depth': 8, 'min_child_weight': 1.584187491893037, 'subsample': 0.8296566930524553, 'colsample_bytree': 0.7242378010457404, 'reg_alpha': 0.05198322999480293, 'reg_lambda': 0.0010675736963796116, 'gamma': 5.950557546918113, 'max_bin': 256}. Best is trial 11 with value: 9.104989512563746.
+daycon-xgb-gpu  | [I 2026-04-21 06:58:00,384] Trial 13 finished with value: 9.106283993312008 and parameters: {'n_estimators': 4250, 'learning_rate': 0.012058182565956723, 'max_depth': 8, 'min_child_weight': 1.8398601636671277, 'subsample': 0.8349759676146735, 'colsample_bytree': 0.6886710127234921, 'reg_alpha': 0.03865777610773537, 'reg_lambda': 0.0008134650578175098, 'gamma': 5.328231120565075, 'max_bin': 320}. Best is trial 11 with value: 9.104989512563746.
+daycon-xgb-gpu  | [I 2026-04-21 06:58:46,685] Trial 14 finished with value: 9.112379814449787 and parameters: {'n_estimators': 3500, 'learning_rate': 0.012238644939520121, 'max_depth': 8, 'min_child_weight': 1.9492204115382035, 'subsample': 0.8508659327312669, 'colsample_bytree': 0.7306898893896446, 'reg_alpha': 0.07409133071007151, 'reg_lambda': 0.0009978103379023222, 'gamma': 5.175147975613447, 'max_bin': 192}. Best is trial 11 with value: 9.104989512563746.
+daycon-xgb-gpu  | [I 2026-04-21 06:59:36,992] Trial 15 finished with value: 9.10800538795579 and parameters: {'n_estimators': 4250, 'learning_rate': 0.016924276182523564, 'max_depth': 8, 'min_child_weight': 2.3127051655473663, 'subsample': 0.8302819239799935, 'colsample_bytree': 0.7468159397110188, 'reg_alpha': 0.25618977610895294, 'reg_lambda': 0.00045604777051597763, 'gamma': 5.844321687033364, 'max_bin': 256}. Best is trial 11 with value: 9.104989512563746.
+daycon-xgb-gpu  | [I 2026-04-21 07:00:20,723] Trial 16 finished with value: 9.1116646169528 and parameters: {'n_estimators': 4750, 'learning_rate': 0.0178507569380008, 'max_depth': 8, 'min_child_weight': 1.509737822380165, 'subsample': 0.8503161870682808, 'colsample_bytree': 0.7128258104597156, 'reg_alpha': 0.017809863727840936, 'reg_lambda': 0.0012616202974747562, 'gamma': 3.393036082078087, 'max_bin': 384}. Best is trial 11 with value: 9.104989512563746.
+daycon-xgb-gpu  | [I 2026-04-21 07:01:05,656] Trial 17 finished with value: 9.107624374361077 and parameters: {'n_estimators': 4250, 'learning_rate': 0.012996473677262022, 'max_depth': 8, 'min_child_weight': 1.7732765956780707, 'subsample': 0.8249726989865106, 'colsample_bytree': 0.6801615926733028, 'reg_alpha': 0.04271749752754817, 'reg_lambda': 0.00040490940531592954, 'gamma': 5.365648933287452, 'max_bin': 192}. Best is trial 11 with value: 9.104989512563746.
+daycon-xgb-gpu  | [I 2026-04-21 07:01:47,436] Trial 18 finished with value: 9.106382462416638 and parameters: {'n_estimators': 3750, 'learning_rate': 0.01555693319560788, 'max_depth': 8, 'min_child_weight': 3.3741931476979787, 'subsample': 0.8712866197420432, 'colsample_bytree': 0.763581734417974, 'reg_alpha': 0.18217399084463998, 'reg_lambda': 0.007904805314839801, 'gamma': 5.997416940344901, 'max_bin': 256}. Best is trial 11 with value: 9.104989512563746.
+daycon-xgb-gpu  | [I 2026-04-21 07:02:41,092] Trial 19 finished with value: 9.102767692615874 and parameters: {'n_estimators': 4000, 'learning_rate': 0.01338407684518729, 'max_depth': 8, 'min_child_weight': 2.1323938277275585, 'subsample': 0.8913723441879448, 'colsample_bytree': 0.7372601499498453, 'reg_alpha': 0.01285639247447542, 'reg_lambda': 0.0878899586757366, 'gamma': 4.972767047205194, 'max_bin': 320}. Best is trial 19 with value: 9.102767692615874.
+daycon-xgb-gpu  | [I 2026-04-21 07:03:21,765] Trial 20 finished with value: 9.102964413094135 and parameters: {'n_estimators': 3500, 'learning_rate': 0.0185330267772365, 'max_depth': 8, 'min_child_weight': 2.1490522880117355, 'subsample': 0.8978328092149175, 'colsample_bytree': 0.7378616884309442, 'reg_alpha': 0.016519375437501736, 'reg_lambda': 0.019587325489658188, 'gamma': 4.983329329308737, 'max_bin': 320}. Best is trial 19 with value: 9.102767692615874.
+daycon-xgb-gpu  | [I 2026-04-21 07:03:59,722] Trial 21 finished with value: 9.109205601148815 and parameters: {'n_estimators': 3500, 'learning_rate': 0.018818941431914198, 'max_depth': 8, 'min_child_weight': 2.557364978628476, 'subsample': 0.8976673077518212, 'colsample_bytree': 0.7430642074684356, 'reg_alpha': 0.017886100863155733, 'reg_lambda': 0.059215748118060824, 'gamma': 4.962507676089084, 'max_bin': 320}. Best is trial 19 with value: 9.102767692615874.
+daycon-xgb-gpu  | [I 2026-04-21 07:04:37,797] Trial 22 finished with value: 9.107886386107143 and parameters: {'n_estimators': 3250, 'learning_rate': 0.022607914577826158, 'max_depth': 8, 'min_child_weight': 2.0794866759108714, 'subsample': 0.8858378041387355, 'colsample_bytree': 0.7397992339355692, 'reg_alpha': 0.011629608165767616, 'reg_lambda': 0.0995956756696025, 'gamma': 4.850166502546335, 'max_bin': 384}. Best is trial 19 with value: 9.102767692615874.
+daycon-xgb-gpu  | [I 2026-04-21 07:05:30,697] Trial 23 finished with value: 9.09746984968272 and parameters: {'n_estimators': 4000, 'learning_rate': 0.013624178458566005, 'max_depth': 8, 'min_child_weight': 2.1246439439439393, 'subsample': 0.884440644889076, 'colsample_bytree': 0.7623297318155008, 'reg_alpha': 0.010318814796949792, 'reg_lambda': 0.02033183105277494, 'gamma': 5.576741096647315, 'max_bin': 320}. Best is trial 23 with value: 9.09746984968272.
+daycon-xgb-gpu  | [I 2026-04-21 07:06:28,988] Trial 24 finished with value: 9.104640530039628 and parameters: {'n_estimators': 3750, 'learning_rate': 0.013546549674021881, 'max_depth': 8, 'min_child_weight': 2.650714161066444, 'subsample': 0.8845401674074531, 'colsample_bytree': 0.7671966525348812, 'reg_alpha': 0.011114688428283406, 'reg_lambda': 0.021218107474435057, 'gamma': 4.132684053323116, 'max_bin': 320}. Best is trial 23 with value: 9.09746984968272.
+daycon-xgb-gpu  | [I 2026-04-21 07:07:18,019] Trial 25 finished with value: 9.103769241707552 and parameters: {'n_estimators': 4000, 'learning_rate': 0.01659576347263483, 'max_depth': 8, 'min_child_weight': 2.1018040605210024, 'subsample': 0.8869166648455723, 'colsample_bytree': 0.7546098059591465, 'reg_alpha': 0.0040615488264972, 'reg_lambda': 0.08120808707910163, 'gamma': 5.156278449008766, 'max_bin': 320}. Best is trial 23 with value: 9.09746984968272.
+daycon-xgb-gpu  | [I 2026-04-21 07:07:49,503] Trial 26 finished with value: 9.113405301326706 and parameters: {'n_estimators': 3250, 'learning_rate': 0.01792653171704295, 'max_depth': 7, 'min_child_weight': 2.472817020032803, 'subsample': 0.8997440990808085, 'colsample_bytree': 0.7736264969457403, 'reg_alpha': 0.02514706033979178, 'reg_lambda': 0.020994989157518018, 'gamma': 5.571356202440278, 'max_bin': 384}. Best is trial 23 with value: 9.09746984968272.
+daycon-xgb-gpu  | [I 2026-04-21 07:08:58,605] Trial 27 finished with value: 9.110441413558577 and parameters: {'n_estimators': 3750, 'learning_rate': 0.01511841472521344, 'max_depth': 9, 'min_child_weight': 2.1363230646670712, 'subsample': 0.8757365748046259, 'colsample_bytree': 0.715625884821168, 'reg_alpha': 0.01113578766189054, 'reg_lambda': 0.04060055501667769, 'gamma': 4.731472638759312, 'max_bin': 320}. Best is trial 23 with value: 9.09746984968272.
+daycon-xgb-gpu  | [I 2026-04-21 07:10:01,767] Trial 28 finished with value: 9.103738070795298 and parameters: {'n_estimators': 3250, 'learning_rate': 0.013242835187767919, 'max_depth': 8, 'min_child_weight': 1.7267691770523237, 'subsample': 0.8605785379893327, 'colsample_bytree': 0.8138011296652599, 'reg_alpha': 0.030922696830822206, 'reg_lambda': 0.009998807218714085, 'gamma': 5.042185134042462, 'max_bin': 320}. Best is trial 23 with value: 9.09746984968272.
+daycon-xgb-gpu  | [I 2026-04-21 07:10:43,710] Trial 29 finished with value: 9.11658054014562 and parameters: {'n_estimators': 3500, 'learning_rate': 0.0286139934420815, 'max_depth': 9, 'min_child_weight': 2.9312974230205, 'subsample': 0.8887502279204639, 'colsample_bytree': 0.7580528171044377, 'reg_alpha': 0.0010349535343045027, 'reg_lambda': 0.040610220162343016, 'gamma': 4.58410691834318, 'max_bin': 320}. Best is trial 23 with value: 9.09746984968272.
+daycon-xgb-gpu  | [I 2026-04-21 07:11:32,552] Trial 30 finished with value: 9.11054945640992 and parameters: {'n_estimators': 4000, 'learning_rate': 0.017476236270169677, 'max_depth': 8, 'min_child_weight': 2.7942450547175963, 'subsample': 0.8791055136771697, 'colsample_bytree': 0.7382511174965866, 'reg_alpha': 0.004214619826958933, 'reg_lambda': 0.05682610034677524, 'gamma': 5.315137862772957, 'max_bin': 384}. Best is trial 23 with value: 9.09746984968272.
+daycon-xgb-gpu  | [I 2026-04-21 07:12:25,314] Trial 31 finished with value: 9.104327414731333 and parameters: {'n_estimators': 3250, 'learning_rate': 0.013242806714614192, 'max_depth': 8, 'min_child_weight': 1.7943491242960556, 'subsample': 0.8636749243468954, 'colsample_bytree': 0.8041022483812323, 'reg_alpha': 0.03017697437487025, 'reg_lambda': 0.010219386597213716, 'gamma': 5.053443247116589, 'max_bin': 320}. Best is trial 23 with value: 9.09746984968272.
+daycon-xgb-gpu  | [I 2026-04-21 07:13:13,926] Trial 32 finished with value: 9.107423789175408 and parameters: {'n_estimators': 3250, 'learning_rate': 0.014114320974187685, 'max_depth': 8, 'min_child_weight': 1.984902196151761, 'subsample': 0.8610361515316061, 'colsample_bytree': 0.8176341636753297, 'reg_alpha': 0.017391085629222355, 'reg_lambda': 0.005539458518348297, 'gamma': 5.520554334411635, 'max_bin': 320}. Best is trial 23 with value: 9.09746984968272.
+daycon-xgb-gpu  | [I 2026-04-21 07:13:46,613] Trial 33 finished with value: 9.112448403412484 and parameters: {'n_estimators': 3500, 'learning_rate': 0.022012299130855572, 'max_depth': 8, 'min_child_weight': 1.7687242198318343, 'subsample': 0.892492166712818, 'colsample_bytree': 0.7001348689315522, 'reg_alpha': 0.008122030567719924, 'reg_lambda': 0.013511819153033157, 'gamma': 4.320672194595485, 'max_bin': 320}. Best is trial 23 with value: 9.09746984968272.
+daycon-xgb-gpu  | [I 2026-04-21 07:14:37,613] Trial 34 finished with value: 9.106575515783442 and parameters: {'n_estimators': 3750, 'learning_rate': 0.013056113428353559, 'max_depth': 8, 'min_child_weight': 2.2607203683158716, 'subsample': 0.8820401742624301, 'colsample_bytree': 0.7933197982911309, 'reg_alpha': 0.012344990789773984, 'reg_lambda': 0.027400079440020254, 'gamma': 3.873177427348046, 'max_bin': 320}. Best is trial 23 with value: 9.09746984968272.
+daycon-xgb-gpu  | [I 2026-04-21 07:15:21,286] Trial 35 finished with value: 9.108518402102648 and parameters: {'n_estimators': 4000, 'learning_rate': 0.014389082448597018, 'max_depth': 7, 'min_child_weight': 1.7010967799024619, 'subsample': 0.894114016762464, 'colsample_bytree': 0.7860527235290612, 'reg_alpha': 0.004719191935776259, 'reg_lambda': 0.01524002703346061, 'gamma': 4.761325482694513, 'max_bin': 320}. Best is trial 23 with value: 9.09746984968272.
+daycon-xgb-gpu  | [I 2026-04-21 07:16:17,995] Trial 36 finished with value: 9.107272768095253 and parameters: {'n_estimators': 3000, 'learning_rate': 0.015847328468570482, 'max_depth': 8, 'min_child_weight': 1.9264775861240966, 'subsample': 0.8442129576612473, 'colsample_bytree': 0.7182368501170442, 'reg_alpha': 0.03382474628571211, 'reg_lambda': 0.005086898821634238, 'gamma': 4.478332302956308, 'max_bin': 384}. Best is trial 23 with value: 9.09746984968272.
+daycon-xgb-gpu  | [I 2026-04-21 07:17:38,231] Trial 37 finished with value: 9.105449296758458 and parameters: {'n_estimators': 4000, 'learning_rate': 0.013857090113150672, 'max_depth': 9, 'min_child_weight': 3.2502964073463656, 'subsample': 0.8683466888209729, 'colsample_bytree': 0.7048545805664278, 'reg_alpha': 0.008114341220239128, 'reg_lambda': 0.031166501191182243, 'gamma': 5.047940582188311, 'max_bin': 320}. Best is trial 23 with value: 9.09746984968272.
+daycon-xgb-gpu  | [I 2026-04-21 07:18:12,375] Trial 38 finished with value: 9.115166435899758 and parameters: {'n_estimators': 3500, 'learning_rate': 0.01525719539493555, 'max_depth': 7, 'min_child_weight': 2.457297602762539, 'subsample': 0.855891290632938, 'colsample_bytree': 0.819327375009092, 'reg_alpha': 0.0026195956928711374, 'reg_lambda': 0.0020137766948083316, 'gamma': 4.731719879170509, 'max_bin': 256}. Best is trial 23 with value: 9.09746984968272.
+daycon-xgb-gpu  | [I 2026-04-21 07:18:39,580] Trial 39 finished with value: 9.110678729052328 and parameters: {'n_estimators': 3250, 'learning_rate': 0.031813607282059654, 'max_depth': 8, 'min_child_weight': 2.185022710949761, 'subsample': 0.8776910226471093, 'colsample_bytree': 0.801702142213704, 'reg_alpha': 0.005671978094504418, 'reg_lambda': 0.0569880331516394, 'gamma': 5.792849108005898, 'max_bin': 320}. Best is trial 23 with value: 9.09746984968272.
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | ==============================
+daycon-xgb-gpu  | Best trial score: 9.09747
+daycon-xgb-gpu  | Best params:
+daycon-xgb-gpu  |   n_estimators: 4000
+daycon-xgb-gpu  |   learning_rate: 0.013624178458566005
+daycon-xgb-gpu  |   max_depth: 8
+daycon-xgb-gpu  |   min_child_weight: 2.1246439439439393
+daycon-xgb-gpu  |   subsample: 0.884440644889076
+daycon-xgb-gpu  |   colsample_bytree: 0.7623297318155008
+daycon-xgb-gpu  |   reg_alpha: 0.010318814796949792
+daycon-xgb-gpu  |   reg_lambda: 0.02033183105277494
+daycon-xgb-gpu  |   gamma: 5.576741096647315
+daycon-xgb-gpu  |   max_bin: 320
+daycon-xgb-gpu  | ==============================
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | ========== Fold 1 ==========
+daycon-xgb-gpu  | [0]   validation_0-mae:0.86439
+daycon-xgb-gpu  | [100] validation_0-mae:0.52224
+daycon-xgb-gpu  | [200] validation_0-mae:0.48450
+daycon-xgb-gpu  | [300] validation_0-mae:0.48028
+daycon-xgb-gpu  | [400] validation_0-mae:0.47986
+daycon-xgb-gpu  | [500] validation_0-mae:0.47972
+daycon-xgb-gpu  | [600] validation_0-mae:0.47956
+daycon-xgb-gpu  | [700] validation_0-mae:0.47967
+daycon-xgb-gpu  | [716] validation_0-mae:0.47964
+daycon-xgb-gpu  | Fold 1 MAE : 8.753828
+daycon-xgb-gpu  | Fold 1 RMSE: 21.308322
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | ========== Fold 2 ==========
+daycon-xgb-gpu  | [0]   validation_0-mae:0.87171
+daycon-xgb-gpu  | [100] validation_0-mae:0.52514
+daycon-xgb-gpu  | [200] validation_0-mae:0.48666
+daycon-xgb-gpu  | [300] validation_0-mae:0.48189
+daycon-xgb-gpu  | [400] validation_0-mae:0.48125
+daycon-xgb-gpu  | [500] validation_0-mae:0.48090
+daycon-xgb-gpu  | [600] validation_0-mae:0.48078
+daycon-xgb-gpu  | [695] validation_0-mae:0.48079
+daycon-xgb-gpu  | Fold 2 MAE : 9.009546
+daycon-xgb-gpu  | Fold 2 RMSE: 22.641649
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | ========== Fold 3 ==========
+daycon-xgb-gpu  | [0]   validation_0-mae:0.87384
+daycon-xgb-gpu  | [100] validation_0-mae:0.53111
+daycon-xgb-gpu  | [200] validation_0-mae:0.49439
+daycon-xgb-gpu  | [300] validation_0-mae:0.48985
+daycon-xgb-gpu  | [400] validation_0-mae:0.48894
+daycon-xgb-gpu  | [500] validation_0-mae:0.48883
+daycon-xgb-gpu  | [600] validation_0-mae:0.48873
+daycon-xgb-gpu  | [700] validation_0-mae:0.48870
+daycon-xgb-gpu  | [749] validation_0-mae:0.48878
+daycon-xgb-gpu  | Fold 3 MAE : 9.240556
+daycon-xgb-gpu  | Fold 3 RMSE: 25.067895
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | ========== Fold 4 ==========
+daycon-xgb-gpu  | [0]   validation_0-mae:0.87207
+daycon-xgb-gpu  | [100] validation_0-mae:0.52707
+daycon-xgb-gpu  | [200] validation_0-mae:0.48994
+daycon-xgb-gpu  | [300] validation_0-mae:0.48585
+daycon-xgb-gpu  | [400] validation_0-mae:0.48522
+daycon-xgb-gpu  | [499] validation_0-mae:0.48532
+daycon-xgb-gpu  | Fold 4 MAE : 9.223998
+daycon-xgb-gpu  | Fold 4 RMSE: 23.511093
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | ========== Fold 5 ==========
+daycon-xgb-gpu  | [0]   validation_0-mae:0.87628
+daycon-xgb-gpu  | [100] validation_0-mae:0.52953
+daycon-xgb-gpu  | [200] validation_0-mae:0.49166
+daycon-xgb-gpu  | [300] validation_0-mae:0.48699
+daycon-xgb-gpu  | [400] validation_0-mae:0.48613
+daycon-xgb-gpu  | [500] validation_0-mae:0.48570
+daycon-xgb-gpu  | [600] validation_0-mae:0.48524
+daycon-xgb-gpu  | [700] validation_0-mae:0.48496
+daycon-xgb-gpu  | [800] validation_0-mae:0.48471
+daycon-xgb-gpu  | [900] validation_0-mae:0.48463
+daycon-xgb-gpu  | [1000]        validation_0-mae:0.48451
+daycon-xgb-gpu  | [1100]        validation_0-mae:0.48442
+daycon-xgb-gpu  | [1200]        validation_0-mae:0.48439
+daycon-xgb-gpu  | [1300]        validation_0-mae:0.48440
+daycon-xgb-gpu  | [1324]        validation_0-mae:0.48442
+daycon-xgb-gpu  | Fold 5 MAE : 9.259421
+daycon-xgb-gpu  | Fold 5 RMSE: 24.272680
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | ==============================
+daycon-xgb-gpu  | CV MAE : 9.09747
+daycon-xgb-gpu  | CV RMSE: 23.396678
+daycon-xgb-gpu  | ==============================
+daycon-xgb-gpu  | Fold 1: MAE=8.753828, RMSE=21.308322
+daycon-xgb-gpu  | Fold 2: MAE=9.009546, RMSE=22.641649
+daycon-xgb-gpu  | Fold 3: MAE=9.240556, RMSE=25.067895
+daycon-xgb-gpu  | Fold 4: MAE=9.223998, RMSE=23.511093
+daycon-xgb-gpu  | Fold 5: MAE=9.259421, RMSE=24.272680
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | Top 40 features:
+daycon-xgb-gpu  |                        feature  importance
+daycon-xgb-gpu  | 26              charging_ratio    0.443574
+daycon-xgb-gpu  | 59            layout_x_density    0.073625
+daycon-xgb-gpu  | 91                  robot_idle    0.061253
+daycon-xgb-gpu  | 89              robot_charging    0.033639
+daycon-xgb-gpu  | 52   intersection_x_congestion    0.032657
+daycon-xgb-gpu  | 76            pack_utilization    0.029373
+daycon-xgb-gpu  | 49                  idle_ratio    0.019040
+daycon-xgb-gpu  | 66            max_zone_density    0.012743
+daycon-xgb-gpu  | 72      order_per_pack_station    0.012595
+daycon-xgb-gpu  | 30            congestion_score    0.010098
+daycon-xgb-gpu  | 35        dispersion_x_density    0.006445
+daycon-xgb-gpu  | 63           low_battery_ratio    0.005685
+daycon-xgb-gpu  | 56          layout_compactness    0.005043
+daycon-xgb-gpu  | 0                 active_ratio    0.004919
+daycon-xgb-gpu  | 17        battery_x_congestion    0.004635
+daycon-xgb-gpu  | 75          pack_station_count    0.004464
+daycon-xgb-gpu  | 93           robot_utilization    0.004312
+daycon-xgb-gpu  | 87                robot_active    0.004118
+daycon-xgb-gpu  | 71      order_per_active_robot    0.003951
+daycon-xgb-gpu  | 118            zone_dispersion    0.003938
+daycon-xgb-gpu  | 11           avg_trip_distance    0.003793
+daycon-xgb-gpu  | 105         te_mean__layout_id    0.003488
+daycon-xgb-gpu  | 99           sku_concentration    0.003460
+daycon-xgb-gpu  | 96                 scenario_id    0.003401
+daycon-xgb-gpu  | 25           charging_pressure    0.003397
+daycon-xgb-gpu  | 92                 robot_total    0.003345
+daycon-xgb-gpu  | 8          avg_items_per_order    0.003283
+daycon-xgb-gpu  | 18            blocked_path_15m    0.003275
+daycon-xgb-gpu  | 4              aisle_width_avg    0.003258
+daycon-xgb-gpu  | 43              floor_area_sqm    0.003256
+daycon-xgb-gpu  | 107       te_mean__layout_type    0.003241
+daycon-xgb-gpu  | 21            ceiling_height_m    0.003188
+daycon-xgb-gpu  | 57                   layout_id    0.003186
+daycon-xgb-gpu  | 69               one_way_ratio    0.003184
+daycon-xgb-gpu  | 19          building_age_years    0.003184
+daycon-xgb-gpu  | 50          intersection_count    0.003178
+daycon-xgb-gpu  | 37        emergency_exit_count    0.003162
+daycon-xgb-gpu  | 58                 layout_type    0.003133
+daycon-xgb-gpu  | 24               charger_count    0.003108
+daycon-xgb-gpu  | 74     outbound_truck_wait_min    0.003087
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | Saved: submission_xgb_improved.csv
+daycon-xgb-gpu  | Saved: feature_importance_xgb_improved.csv
+daycon-xgb-gpu  | Saved: oof_predictions_xgb_improved.csv
+daycon-xgb-gpu  | Saved: oof_layout_mae.csv
+daycon-xgb-gpu  | Saved: oof_scenario_mae.csv
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | ===== sanity check =====
+daycon-xgb-gpu  | y_raw stats
+daycon-xgb-gpu  | count    250000.000000
+daycon-xgb-gpu  | mean         18.962296
+daycon-xgb-gpu  | std          27.351374
+daycon-xgb-gpu  | min           0.000000
+daycon-xgb-gpu  | 25%           4.278801
+daycon-xgb-gpu  | 50%           9.032652
+daycon-xgb-gpu  | 75%          25.791869
+daycon-xgb-gpu  | max         715.858119
+daycon-xgb-gpu  | Name: avg_delay_minutes_next_30m, dtype: float64
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | oof_pred stats
+daycon-xgb-gpu  | count    250000.000000
+daycon-xgb-gpu  | mean         14.657322
+daycon-xgb-gpu  | std          12.453925
+daycon-xgb-gpu  | min           0.000000
+daycon-xgb-gpu  | 25%           4.802095
+daycon-xgb-gpu  | 50%           7.951731
+daycon-xgb-gpu  | 75%          28.449908
+daycon-xgb-gpu  | max          72.794543
+daycon-xgb-gpu  | dtype: float64
+daycon-xgb-gpu  | 
+daycon-xgb-gpu  | test_pred stats
+daycon-xgb-gpu  | count    50000.000000
+daycon-xgb-gpu  | mean        16.681001
+daycon-xgb-gpu  | std         12.181298
+daycon-xgb-gpu  | min          0.073286
+daycon-xgb-gpu  | 25%          5.147557
+daycon-xgb-gpu  | 50%         12.055007
+daycon-xgb-gpu  | 75%         29.427289
+daycon-xgb-gpu  | max         59.192851
+daycon-xgb-gpu  | dtype: float64
+daycon-xgb-gpu exited with code 0

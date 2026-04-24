@@ -1,0 +1,15 @@
+services:
+  daycon-xgb-gpu:
+    build:
+      context: .
+      dockerfile: dockerfile
+    image: daycon-xgb-gpu
+    container_name: daycon-xgb-gpu
+    working_dir: /workspace
+    gpus: all
+    tty: true
+    stdin_open: true
+    volumes:
+      - ./:/workspace
+      - /home/plasma/test/data:/data
+    command: ["python", "daycon.py"]
