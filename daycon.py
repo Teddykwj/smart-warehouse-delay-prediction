@@ -1,3 +1,6 @@
+import os
+os.environ["XGBOOST_DISABLE_VMM"] = "1"
+
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -14,6 +17,8 @@ from xgboost import XGBRegressor
 
 from sklearn.model_selection import GroupKFold
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import StandardScaler
 
 
 # =========================================================
@@ -27,6 +32,7 @@ RANDOM_STATE = 42
 N_TRIALS_XGB = 60
 N_TRIALS_LGB = 60
 EPS = 1e-6
+N_LAYOUT_CLUSTERS = 15
 
 
 # =========================================================
@@ -50,7 +56,82 @@ print(f"train {train.shape}, test {test.shape}")
 
 
 # =========================================================
-# Feature engineering
+# v16 NEW: Layout clustering
+# layout_info는 300개 레이아웃 전부 포함 (test-only 50개 포함)
+# → unseen layout도 cluster TE 혜택을 받을 수 있음
+# =========================================================
+def make_layout_clusters(layout_info, n_clusters=N_LAYOUT_CLUSTERS):
+    num_cols = [
+        "aisle_width_avg", "intersection_count", "one_way_ratio",
+        "pack_station_count", "charger_count", "layout_compactness",
+        "zone_dispersion", "robot_total", "building_age_years",
+        "floor_area_sqm", "ceiling_height_m", "fire_sprinkler_count",
+        "emergency_exit_count",
+    ]
+    num_cols = [c for c in num_cols if c in layout_info.columns]
+    X = layout_info[num_cols].fillna(layout_info[num_cols].median())
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    km = KMeans(n_clusters=n_clusters, random_state=RANDOM_STATE, n_init=10)
+    layout_info = layout_info.copy()
+    layout_info["layout_cluster"] = km.fit_predict(X_scaled).astype("int16")
+    print(f"Layout clusters: {n_clusters} clusters for {len(layout_info)} layouts")
+    return layout_info[["layout_id", "layout_cluster"]]
+
+layout_clusters = make_layout_clusters(layout_info)
+train = train.merge(layout_clusters, on="layout_id", how="left")
+test  = test.merge(layout_clusters, on="layout_id", how="left")
+
+
+# =========================================================
+# v16 NEW: Scenario-level context features
+# 각 scenario의 25개 timeslot 전체에서 집계 → test에서도 동작
+# (test scenario는 새것이지만 해당 scenario의 25개 행은 모두 이용 가능)
+# =========================================================
+SCENE_COLS = [
+    "charging_ratio_raw",   # robot_charging / robot_total (make_features 전에 미리 계산)
+    "congestion_score",
+    "low_battery_ratio",
+    "order_inflow_15m",
+    "robot_utilization",
+]
+
+def precompute_scene_ratios(df):
+    df = df.copy()
+    if "robot_charging" in df.columns and "robot_total" in df.columns:
+        df["charging_ratio_raw"] = df["robot_charging"] / (df["robot_total"] + EPS)
+    return df
+
+train = precompute_scene_ratios(train)
+test  = precompute_scene_ratios(test)
+
+def make_scenario_context(train_df, test_df):
+    scene_cols = [c for c in SCENE_COLS if c in train_df.columns]
+
+    def _agg(df, sid_col="scenario_id"):
+        result = df.copy()
+        for col in scene_cols:
+            stats = df.groupby(sid_col)[col].agg(["mean", "std", "max", "min"])
+            stats.columns = [
+                f"scene_{col}_mean", f"scene_{col}_std",
+                f"scene_{col}_max",  f"scene_{col}_min",
+            ]
+            stats["scene_{}_range".format(col)] = stats[f"scene_{col}_max"] - stats[f"scene_{col}_min"]
+            stats = stats.reset_index()
+            result = result.merge(stats, on=sid_col, how="left")
+        return result
+
+    train_df = _agg(train_df)
+    test_df  = _agg(test_df)
+    n_new = len([c for c in SCENE_COLS if c in train_df.columns]) * 5
+    print(f"Scenario context features added: ~{n_new}")
+    return train_df, test_df
+
+train, test = make_scenario_context(train, test)
+
+
+# =========================================================
+# Feature engineering (v15 base + v16 additions)
 # =========================================================
 def make_features(df):
     df = df.copy()
@@ -82,7 +163,7 @@ def make_features(df):
     _s("active_ratio",    _r("robot_active",   "robot_total"))
     _s("utilization_gap", _r("robot_idle",     "robot_active"))
 
-    # charging_ratio polynomial (dominant feature exploitation)
+    # charging_ratio polynomial (dominant feature)
     if "charging_ratio" in df.columns:
         cr = df["charging_ratio"]
         df["charging_ratio_sq"]    = cr ** 2
@@ -93,6 +174,13 @@ def make_features(df):
     if "robot_active" in df.columns and "robot_idle" in df.columns:
         df["robot_available"] = df["robot_active"] + df["robot_idle"]
     _s("availability_ratio", _r("robot_available", "robot_total"))
+
+    # v16: availability_ratio polynomial (top feature at 30.7%, was missing poly)
+    if "availability_ratio" in df.columns:
+        ar = df["availability_ratio"]
+        df["availability_ratio_sq"]    = ar ** 2
+        df["availability_ratio_log1p"] = np.log1p(ar.fillna(0).clip(0))
+        df["availability_ratio_inv"]   = 1.0 / (ar.fillna(1.0) + EPS)
 
     # ----- Congestion & density -----
     for col, a, b in [
@@ -112,17 +200,21 @@ def make_features(df):
     _s("order_per_robot",        _r("order_inflow_15m", "robot_total"))
     _s("order_per_active_robot", _r("order_inflow_15m", "robot_active"))
     _s("sku_per_order",          _r("unique_sku_15m",   "order_inflow_15m"))
+    _s("sku_concentration",      _r("order_inflow_15m", "unique_sku_15m"))
+
+    if "order_inflow_15m" in df.columns and "pack_station_count" in df.columns:
+        df["pack_utilization"] = df["order_inflow_15m"] / (df["pack_station_count"] + EPS)
     _s("pack_util_x_order",      _p("pack_utilization", "order_inflow_15m"))
     _s("pack_util_x_congestion", _p("pack_utilization", "congestion_score"))
 
     # ----- Battery & charging -----
-    _s("battery_risk_score",        _p("low_battery_ratio", "robot_idle"))
-    _s("charging_pressure",         _p("low_battery_ratio", "robot_charging"))
-    _s("battery_x_congestion",      _p("low_battery_ratio", "congestion_score"))
+    _s("battery_risk_score",         _p("low_battery_ratio", "robot_idle"))
+    _s("charging_pressure",          _p("low_battery_ratio", "robot_charging"))
+    _s("battery_x_congestion",       _p("low_battery_ratio", "congestion_score"))
     _s("charging_robot_per_charger", _r("robot_charging", "charger_count"))
-    _s("queue_pressure",            _p("charge_queue_length", "charging_ratio"))
+    _s("queue_pressure",             _p("charge_queue_length", "charging_ratio"))
 
-    # charging_ratio × other key features (leverage dominant signal)
+    # charging_ratio × other key features
     if "charging_ratio" in df.columns:
         for col, b in [
             ("charging_x_pack_util",      "pack_utilization"),
@@ -165,6 +257,15 @@ def make_features(df):
         if "charging_ratio" in df.columns:
             df["charging_x_shift_sin"] = df["charging_ratio"] * df["shift_hour_sin"]
 
+    # v16: scenario context × current state interactions
+    # "현재 상태가 시나리오 평균 대비 얼마나 나쁜가?"
+    if "charging_ratio" in df.columns and "scene_charging_ratio_raw_mean" in df.columns:
+        df["charging_vs_scene_mean"] = df["charging_ratio"] - df["scene_charging_ratio_raw_mean"]
+        df["charging_vs_scene_ratio"] = df["charging_ratio"] / (df["scene_charging_ratio_raw_mean"] + EPS)
+
+    if "congestion_score" in df.columns and "scene_congestion_score_mean" in df.columns:
+        df["congestion_vs_scene_mean"] = df["congestion_score"] - df["scene_congestion_score_mean"]
+
     return df
 
 
@@ -190,12 +291,14 @@ gkf = GroupKFold(n_splits=N_SPLITS)
 
 # =========================================================
 # OOF Target Encoding
+# layout_cluster 추가: unseen test layout도 cluster TE 혜택
 # =========================================================
 def add_oof_te(X, X_test, y, splitter, groups):
     X, X_test = X.copy(), X_test.copy()
     gmean = float(y.mean())
 
-    for key in [c for c in ["layout_id", "scenario_id", "layout_type"] if c in X.columns]:
+    te_keys = ["layout_id", "scenario_id", "layout_type", "layout_cluster"]
+    for key in [c for c in te_keys if c in X.columns]:
         col = f"te__{key}"
         X[col] = np.nan
         X_test[col] = X_test[key].map(y.groupby(X[key]).mean()).fillna(gmean)
@@ -216,6 +319,17 @@ def add_oof_te(X, X_test, y, splitter, groups):
             enc = y.iloc[tr_i].groupby(ck.iloc[tr_i]).mean()
             X.iloc[va_i, X.columns.get_loc(col)] = ck.iloc[va_i].map(enc).fillna(gmean).values
 
+    # v16: layout_cluster × layout_type combo TE (unseen layout 대응)
+    if "layout_cluster" in X.columns and "layout_type" in X.columns:
+        ck   = X["layout_cluster"].astype(str) + "__" + X["layout_type"].astype(str)
+        ck_t = X_test["layout_cluster"].astype(str) + "__" + X_test["layout_type"].astype(str)
+        col = "te__cluster_type"
+        X[col] = np.nan
+        X_test[col] = ck_t.map(y.groupby(ck).mean()).fillna(gmean)
+        for tr_i, va_i in splitter.split(X, y, groups=groups):
+            enc = y.iloc[tr_i].groupby(ck.iloc[tr_i]).mean()
+            X.iloc[va_i, X.columns.get_loc(col)] = ck.iloc[va_i].map(enc).fillna(gmean).values
+
     return X, X_test
 
 
@@ -226,7 +340,8 @@ print(f"features after TE: {X.shape[1]}")
 # =========================================================
 # Categorical encoding
 # =========================================================
-cat_cols = [c for c in ["layout_id", "scenario_id", "layout_type"] if c in X.columns]
+cat_cols = [c for c in ["layout_id", "scenario_id", "layout_type", "layout_cluster"]
+            if c in X.columns]
 for c in X.select_dtypes("object").columns:
     if c not in cat_cols:
         cat_cols.append(c)
@@ -254,7 +369,7 @@ XGB_BASE = dict(
 )
 LGB_BASE = dict(
     objective="mae", metric="mae",
-    device_type="cpu",
+    device="cpu",
     n_jobs=-1, random_state=RANDOM_STATE, verbose=-1,
 )
 
@@ -264,17 +379,17 @@ LGB_BASE = dict(
 # =========================================================
 def xgb_trial(trial):
     p = dict(
-        n_estimators    = trial.suggest_int("n_estimators", 3000, 7000, step=250),
-        learning_rate   = trial.suggest_float("learning_rate", 0.01, 0.05, log=True),
-        max_depth       = trial.suggest_int("max_depth", 5, 9),
-        min_child_weight= trial.suggest_float("min_child_weight", 1.0, 10.0, log=True),
-        subsample       = trial.suggest_float("subsample", 0.65, 0.95),
-        colsample_bytree= trial.suggest_float("colsample_bytree", 0.5, 0.85),
-        colsample_bylevel=trial.suggest_float("colsample_bylevel", 0.7, 1.0),
-        reg_alpha       = trial.suggest_float("reg_alpha", 1e-3, 3.0, log=True),
-        reg_lambda      = trial.suggest_float("reg_lambda", 1e-5, 0.5, log=True),
-        gamma           = trial.suggest_float("gamma", 0.0, 10.0),
-        max_bin         = trial.suggest_int("max_bin", 128, 512, step=64),
+        n_estimators     = trial.suggest_int("n_estimators", 3000, 10000, step=250),
+        learning_rate    = trial.suggest_float("learning_rate", 0.005, 0.05, log=True),
+        max_depth        = trial.suggest_int("max_depth", 5, 11),
+        min_child_weight = trial.suggest_float("min_child_weight", 1.0, 12.0, log=True),
+        subsample        = trial.suggest_float("subsample", 0.65, 0.95),
+        colsample_bytree = trial.suggest_float("colsample_bytree", 0.4, 0.9),
+        colsample_bylevel= trial.suggest_float("colsample_bylevel", 0.6, 1.0),
+        reg_alpha        = trial.suggest_float("reg_alpha", 1e-3, 5.0, log=True),
+        reg_lambda       = trial.suggest_float("reg_lambda", 1e-5, 1.0, log=True),
+        gamma            = trial.suggest_float("gamma", 0.0, 15.0),
+        max_bin          = trial.suggest_int("max_bin", 128, 512, step=64),
     )
     maes = []
     for tr_i, va_i in gkf.split(X, y_sqrt, groups=groups):
@@ -304,17 +419,17 @@ print("XGB best params:", study_xgb.best_params)
 # =========================================================
 def lgb_trial(trial):
     p = dict(
-        n_estimators    = trial.suggest_int("n_estimators", 3000, 8000, step=250),
-        learning_rate   = trial.suggest_float("learning_rate", 0.01, 0.05, log=True),
-        max_depth       = trial.suggest_int("max_depth", 5, 9),
-        num_leaves      = trial.suggest_int("num_leaves", 63, 511),
-        min_child_samples= trial.suggest_int("min_child_samples", 10, 80),
-        subsample       = trial.suggest_float("subsample", 0.65, 0.95),
-        subsample_freq  = 1,
-        colsample_bytree= trial.suggest_float("colsample_bytree", 0.5, 0.85),
-        reg_alpha       = trial.suggest_float("reg_alpha", 1e-3, 3.0, log=True),
-        reg_lambda      = trial.suggest_float("reg_lambda", 1e-3, 3.0, log=True),
-        min_split_gain  = trial.suggest_float("min_split_gain", 0.0, 1.0),
+        n_estimators     = trial.suggest_int("n_estimators", 2000, 10000, step=250),
+        learning_rate    = trial.suggest_float("learning_rate", 0.005, 0.05, log=True),
+        max_depth        = trial.suggest_int("max_depth", 5, 11),
+        num_leaves       = trial.suggest_int("num_leaves", 63, 511),
+        min_child_samples= trial.suggest_int("min_child_samples", 10, 150),
+        subsample        = trial.suggest_float("subsample", 0.65, 0.95),
+        subsample_freq   = 1,
+        colsample_bytree = trial.suggest_float("colsample_bytree", 0.35, 0.85),
+        reg_alpha        = trial.suggest_float("reg_alpha", 1e-3, 5.0, log=True),
+        reg_lambda       = trial.suggest_float("reg_lambda", 1e-3, 5.0, log=True),
+        min_split_gain   = trial.suggest_float("min_split_gain", 0.0, 3.0),
     )
     maes = []
     for tr_i, va_i in gkf.split(X, y_sqrt, groups=groups):
@@ -378,7 +493,7 @@ def run_final_cv(ModelCls, model_params, is_lgb=False):
                 "fold": fold,
             }))
 
-    cv_mae = mean_absolute_error(y_raw, oof)
+    cv_mae  = mean_absolute_error(y_raw, oof)
     cv_rmse = np.sqrt(mean_squared_error(y_raw, oof))
     print(f"  CV MAE: {cv_mae:.6f}  RMSE: {cv_rmse:.6f}\n")
     return oof, test_p, fi_list
@@ -428,7 +543,7 @@ for tag, fi_list in [("xgb", xgb_fi), ("lgb", lgb_fi)]:
             .sort_values(ascending=False)
             .reset_index()
         )
-        fi_mean.to_csv(DATA_DIR / f"feature_importance_{tag}_v2.csv", index=False)
+        fi_mean.to_csv(DATA_DIR / f"feature_importance_{tag}_v3.csv", index=False)
         print(f"\nTop 20 {tag.upper()} features:")
         print(fi_mean.head(20).to_string(index=False))
 
@@ -438,12 +553,12 @@ for tag, fi_list in [("xgb", xgb_fi), ("lgb", lgb_fi)]:
 # =========================================================
 oof_blend = best_w * xgb_oof + (1 - best_w) * lgb_oof
 oof_df = train[[ID_COL, "layout_id", "scenario_id"]].copy()
-oof_df["y_true"]      = y_raw.values
+oof_df["y_true"]       = y_raw.values
 oof_df["y_pred_xgb"]   = xgb_oof
 oof_df["y_pred_lgb"]   = lgb_oof
 oof_df["y_pred_blend"] = oof_blend
 oof_df["abs_err"]      = np.abs(oof_df["y_true"] - oof_df["y_pred_blend"])
-oof_df.to_csv(DATA_DIR / "oof_ensemble_v2.csv", index=False)
+oof_df.to_csv(DATA_DIR / "oof_ensemble_v3.csv", index=False)
 
 layout_mae = (
     oof_df.groupby("layout_id")["abs_err"]
@@ -459,12 +574,12 @@ print(layout_mae.head(10))
 # =========================================================
 submission = sample_sub.copy()
 submission[TARGET] = final_pred
-submission.to_csv(DATA_DIR / "submission_ensemble_v2.csv", index=False)
+submission.to_csv(DATA_DIR / "submission_ensemble_v3.csv", index=False)
 
-print("\nSaved: submission_ensemble_v2.csv")
-print("Saved: oof_ensemble_v2.csv")
-print("Saved: feature_importance_xgb_v2.csv")
-print("Saved: feature_importance_lgb_v2.csv")
+print("\nSaved: submission_ensemble_v3.csv")
+print("Saved: oof_ensemble_v3.csv")
+print("Saved: feature_importance_xgb_v3.csv")
+print("Saved: feature_importance_lgb_v3.csv")
 
 
 # =========================================================
