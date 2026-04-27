@@ -29,10 +29,10 @@ TARGET = "avg_delay_minutes_next_30m"
 ID_COL = "ID"
 N_SPLITS = 5
 RANDOM_STATE = 42
-N_TRIALS_XGB = 60
-N_TRIALS_LGB = 60
+N_TRIALS_XGB = 80
+N_TRIALS_LGB = 80
 EPS = 1e-6
-N_LAYOUT_CLUSTERS = 15
+N_LAYOUT_CLUSTERS = 20
 
 
 # =========================================================
@@ -85,15 +85,22 @@ test  = test.merge(layout_clusters, on="layout_id", how="left")
 
 # =========================================================
 # v16 NEW: Scenario-level context features
-# 각 scenario의 25개 timeslot 전체에서 집계 → test에서도 동작
-# (test scenario는 새것이지만 해당 scenario의 25개 행은 모두 이용 가능)
+# v17 UPDATE: SCENE_COLS 확장 (5→12)
 # =========================================================
 SCENE_COLS = [
-    "charging_ratio_raw",   # robot_charging / robot_total (make_features 전에 미리 계산)
+    "charging_ratio_raw",
     "congestion_score",
     "low_battery_ratio",
     "order_inflow_15m",
     "robot_utilization",
+    # v17 NEW
+    "fault_count_15m",
+    "near_collision_15m",
+    "blocked_path_15m",
+    "avg_trip_distance",
+    "max_zone_density",
+    "task_reassign_15m",
+    "avg_recovery_time",
 ]
 
 def precompute_scene_ratios(df):
@@ -131,7 +138,24 @@ train, test = make_scenario_context(train, test)
 
 
 # =========================================================
-# Feature engineering (v15 base + v16 additions)
+# v17 NEW: Timeslot rank within scenario
+# 시나리오 내 25개 슬롯 중 몇 번째인지 (0~24)
+# =========================================================
+def add_timeslot_rank(df):
+    df = df.copy()
+    df["timeslot_rank"] = df.groupby("scenario_id").cumcount().astype("int8")
+    df["timeslot_rank_norm"] = (df["timeslot_rank"] / 24.0).astype("float32")
+    df["timeslot_sin"] = np.sin(2 * np.pi * df["timeslot_rank"] / 25).astype("float32")
+    df["timeslot_cos"] = np.cos(2 * np.pi * df["timeslot_rank"] / 25).astype("float32")
+    return df
+
+train = add_timeslot_rank(train)
+test  = add_timeslot_rank(test)
+print("Timeslot rank features added")
+
+
+# =========================================================
+# Feature engineering (v15 base + v16 + v17 additions)
 # =========================================================
 def make_features(df):
     df = df.copy()
@@ -181,6 +205,11 @@ def make_features(df):
         df["availability_ratio_sq"]    = ar ** 2
         df["availability_ratio_log1p"] = np.log1p(ar.fillna(0).clip(0))
         df["availability_ratio_inv"]   = 1.0 / (ar.fillna(1.0) + EPS)
+
+    # v17: availability_ratio interactions
+    _s("avail_x_congestion",     _p("availability_ratio", "congestion_score"))
+    _s("avail_x_order_pressure", _p("availability_ratio", "order_per_active_robot"))
+    _s("avail_x_low_battery",    _p("availability_ratio", "low_battery_ratio"))
 
     # ----- Congestion & density -----
     for col, a, b in [
@@ -233,6 +262,18 @@ def make_features(df):
     if "charging_ratio" in df.columns and "layout_x_density" in df.columns:
         df["charging_x_layout_density"] = df["charging_ratio"] * df["layout_x_density"]
 
+    # v17: avg_trip_distance interactions (LGB 2위 피처)
+    _s("trip_x_congestion", _p("avg_trip_distance", "congestion_score"))
+    _s("trip_x_density",    _p("avg_trip_distance", "max_zone_density"))
+    _s("trip_x_order",      _p("avg_trip_distance", "order_per_active_robot"))
+
+    # v17: 미사용 유망 컬럼 interactions
+    _s("path_opt_x_congestion",     _p("path_optimization_score",  "congestion_score"))
+    _s("intersection_wait_x_count", _p("intersection_wait_time_avg", "intersection_count"))
+    _s("charge_eff_x_charging",     _p("charge_efficiency_pct",    "charging_ratio"))
+    _s("wms_x_order",               _p("wms_response_time_ms",     "order_inflow_15m"))
+    _s("agv_success_x_util",        _p("agv_task_success_rate",    "robot_utilization"))
+
     # ----- Difference / sum -----
     if "robot_idle" in df.columns and "robot_active" in df.columns:
         df["idle_minus_active"] = df["robot_idle"] - df["robot_active"]
@@ -260,11 +301,26 @@ def make_features(df):
     # v16: scenario context × current state interactions
     # "현재 상태가 시나리오 평균 대비 얼마나 나쁜가?"
     if "charging_ratio" in df.columns and "scene_charging_ratio_raw_mean" in df.columns:
-        df["charging_vs_scene_mean"] = df["charging_ratio"] - df["scene_charging_ratio_raw_mean"]
+        df["charging_vs_scene_mean"]  = df["charging_ratio"] - df["scene_charging_ratio_raw_mean"]
         df["charging_vs_scene_ratio"] = df["charging_ratio"] / (df["scene_charging_ratio_raw_mean"] + EPS)
 
     if "congestion_score" in df.columns and "scene_congestion_score_mean" in df.columns:
         df["congestion_vs_scene_mean"] = df["congestion_score"] - df["scene_congestion_score_mean"]
+
+    # v17: 추가 scene vs current interactions
+    if "order_inflow_15m" in df.columns and "scene_order_inflow_15m_mean" in df.columns:
+        df["order_vs_scene_mean"]  = df["order_inflow_15m"] - df["scene_order_inflow_15m_mean"]
+        df["order_vs_scene_ratio"] = df["order_inflow_15m"] / (df["scene_order_inflow_15m_mean"] + EPS)
+
+    if "robot_utilization" in df.columns and "scene_robot_utilization_mean" in df.columns:
+        df["utilization_vs_scene_mean"] = df["robot_utilization"] - df["scene_robot_utilization_mean"]
+
+    if "low_battery_ratio" in df.columns and "scene_low_battery_ratio_mean" in df.columns:
+        df["battery_vs_scene_mean"] = df["low_battery_ratio"] - df["scene_low_battery_ratio_mean"]
+
+    if "avg_trip_distance" in df.columns and "scene_avg_trip_distance_mean" in df.columns:
+        df["trip_vs_scene_mean"]  = df["avg_trip_distance"] - df["scene_avg_trip_distance_mean"]
+        df["trip_vs_scene_ratio"] = df["avg_trip_distance"] / (df["scene_avg_trip_distance_mean"] + EPS)
 
     return df
 
@@ -394,8 +450,13 @@ def xgb_trial(trial):
     maes = []
     for tr_i, va_i in gkf.split(X, y_sqrt, groups=groups):
         m = XGBRegressor(**XGB_BASE, **p)
-        m.fit(X.iloc[tr_i], y_sqrt.iloc[tr_i],
-              eval_set=[(X.iloc[va_i], y_sqrt.iloc[va_i])], verbose=False)
+        try:
+            m.fit(X.iloc[tr_i], y_sqrt.iloc[tr_i],
+                  eval_set=[(X.iloc[va_i], y_sqrt.iloc[va_i])], verbose=False)
+        except Exception as e:
+            if "CUDA_ERROR" in str(e) or "cuMem" in str(e):
+                raise optuna.exceptions.TrialPruned()
+            raise
         pred = inv_sqrt(np.clip(m.predict(X.iloc[va_i]), 0, None))
         maes.append(mean_absolute_error(y_raw.iloc[va_i], pred))
     return float(np.mean(maes))
@@ -474,11 +535,24 @@ def run_final_cv(ModelCls, model_params, is_lgb=False):
                            lgb.log_evaluation(period=0)],
             )
         else:
-            m.fit(
-                X.iloc[tr_i], y_sqrt.iloc[tr_i],
-                eval_set=[(X.iloc[va_i], y_sqrt.iloc[va_i])],
-                verbose=100,
-            )
+            try:
+                m.fit(
+                    X.iloc[tr_i], y_sqrt.iloc[tr_i],
+                    eval_set=[(X.iloc[va_i], y_sqrt.iloc[va_i])],
+                    verbose=100,
+                )
+            except Exception as e:
+                if "CUDA_ERROR" in str(e) or "cuMem" in str(e):
+                    print(f"  [Fold {fold}] CUDA VMM error → CPU fallback")
+                    cpu_params = {**model_params, "device": "cpu", "n_jobs": -1}
+                    m = ModelCls(**cpu_params)
+                    m.fit(
+                        X.iloc[tr_i], y_sqrt.iloc[tr_i],
+                        eval_set=[(X.iloc[va_i], y_sqrt.iloc[va_i])],
+                        verbose=100,
+                    )
+                else:
+                    raise
 
         oof[va_i] = inv_sqrt(np.clip(m.predict(X.iloc[va_i]), 0, None))
         test_p += inv_sqrt(np.clip(m.predict(X_test), 0, None)) / N_SPLITS
@@ -543,7 +617,7 @@ for tag, fi_list in [("xgb", xgb_fi), ("lgb", lgb_fi)]:
             .sort_values(ascending=False)
             .reset_index()
         )
-        fi_mean.to_csv(DATA_DIR / f"feature_importance_{tag}_v3.csv", index=False)
+        fi_mean.to_csv(DATA_DIR / f"feature_importance_{tag}_v4.csv", index=False)
         print(f"\nTop 20 {tag.upper()} features:")
         print(fi_mean.head(20).to_string(index=False))
 
@@ -558,7 +632,7 @@ oof_df["y_pred_xgb"]   = xgb_oof
 oof_df["y_pred_lgb"]   = lgb_oof
 oof_df["y_pred_blend"] = oof_blend
 oof_df["abs_err"]      = np.abs(oof_df["y_true"] - oof_df["y_pred_blend"])
-oof_df.to_csv(DATA_DIR / "oof_ensemble_v3.csv", index=False)
+oof_df.to_csv(DATA_DIR / "oof_ensemble_v4.csv", index=False)
 
 layout_mae = (
     oof_df.groupby("layout_id")["abs_err"]
@@ -574,10 +648,10 @@ print(layout_mae.head(10))
 # =========================================================
 submission = sample_sub.copy()
 submission[TARGET] = final_pred
-submission.to_csv(DATA_DIR / "submission_ensemble_v3.csv", index=False)
+submission.to_csv(DATA_DIR / "submission_ensemble_v4.csv", index=False)
 
-print("\nSaved: submission_ensemble_v3.csv")
-print("Saved: oof_ensemble_v3.csv")
+print("\nSaved: submission_ensemble_v4.csv")
+print("Saved: oof_ensemble_v4.csv")
 print("Saved: feature_importance_xgb_v3.csv")
 print("Saved: feature_importance_lgb_v3.csv")
 
