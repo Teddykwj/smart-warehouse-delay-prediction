@@ -1,10 +1,10 @@
 # Experiment Results
 
-> CV 베스트: **v17** — Blend CV MAE `8.8640`
+> CV 베스트: **v18** — Blend CV MAE `8.8503`
 >
 > Dacon 베스트: **v17** — Dacon Public `10.4058` (CV MAE `8.8640`)
 >
-> CV-Dacon Gap 추이: 초기 ~1.59 → v15 ~1.60 → v16 1.547 → v17 **1.542** (gap 축소)
+> CV-Dacon Gap 추이: 초기 ~1.59 → v15 ~1.60 → v16 1.547 → v17 1.542 → v18 미제출
 
 | # | Date | Version | XGB CV MAE | LGB CV MAE | Blend CV MAE | XGB Weight | Dacon MAE | CV-Dacon Gap | Notes |
 |---|------|---------|-----------|-----------|-------------|-----------|----------|-------------|-------|
@@ -27,7 +27,8 @@
 ---
 
 | 16 | 2026-04-25 | **v16** ★ | 8.947343 | 8.953853 | 8.942603 | 0.60 | **10.489869** | **1.547266** | 시나리오 컨텍스트 피처(25개), 레이아웃 클러스터링 K-means(15) + cluster TE, availability_ratio 다항식, 192→198 features, Optuna 60trials — **Dacon 베스트** |
-| 17 | 2026-04-26 | **v17** ★ | **8.877776** | **8.865889** | **8.864023** | **0.26** | **10.405795** | **1.541772** | SCENE_COLS 5→12개, timeslot rank 피처, availability/trip/미사용컬럼 interaction 추가, scene×현재 interaction 2→6쌍, N_LAYOUT_CLUSTERS 15→20, Optuna 60→80trials — **CV 베스트 & Dacon 베스트** |
+| 17 | 2026-04-26 | **v17** ★ | 8.877776 | 8.865889 | 8.864023 | 0.26 | **10.405795** | **1.541772** | SCENE_COLS 5→12개, timeslot rank 피처, availability/trip/미사용컬럼 interaction 추가, scene×현재 interaction 2→6쌍, N_LAYOUT_CLUSTERS 15→20, Optuna 60→80trials — **Dacon 베스트** |
+| 18 | 2026-04-26 | v18 | 8.858958 | 8.856323 | 8.850300 | 0.46 | 10.495149 | 1.645149 | SCENE_COLS 12→18개, lag/diff 피처 18개(→저중요도+Dacon악화), scene×avail_ratio 교차 4쌍, Smoothed TE, 305 features — lag 버그 수정 후 재제출했으나 v17 대비 Dacon 하락 |
 
 ---
 
@@ -40,3 +41,6 @@
 - **LGB 앙상블 효과**: v15에서 XGB 단독 대비 CV MAE 0.003 개선 (9.0950 → 9.0919)
 - **고오차 레이아웃**: WH_073(33.4), WH_051(33.4), WH_217(32.6), WH_049(32.4), WH_098(29.8) — v17에서 전반적으로 소폭 개선 (v16 대비 WH_051: 34.6→33.4, WH_073: 33.9→33.4)
 - **v17 XGB weight 급감**: 0.60→0.26 — LGB가 v17에서 XGB보다 강해짐 (LGB 8.8659 < XGB 8.8778)
+- **v18 XGB weight 회복**: 0.26→0.46 — lag/diff 피처로 XGB-LGB 균형 회복
+- **v18 LGB top 피처**: `scene_charge_efficiency_pct_*`, `scene_path_optimization_score_*` — v18 신규 SCENE_COLS가 즉시 상위권 진입
+- **고오차 레이아웃 v18**: WH_051(33.5), WH_073(33.4), WH_217(32.9), WH_049(32.2), WH_098(29.7) — v17 대비 소폭 혼조

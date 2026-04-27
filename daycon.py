@@ -86,6 +86,7 @@ test  = test.merge(layout_clusters, on="layout_id", how="left")
 # =========================================================
 # v16 NEW: Scenario-level context features
 # v17 UPDATE: SCENE_COLS 확장 (5→12)
+# v18 UPDATE: SCENE_COLS 확장 (12→18)
 # =========================================================
 SCENE_COLS = [
     "charging_ratio_raw",
@@ -101,6 +102,13 @@ SCENE_COLS = [
     "max_zone_density",
     "task_reassign_15m",
     "avg_recovery_time",
+    # v18 NEW
+    "battery_mean",
+    "avg_charge_wait",
+    "charge_efficiency_pct",
+    "aisle_traffic_score",
+    "path_optimization_score",
+    "intersection_wait_time_avg",
 ]
 
 def precompute_scene_ratios(df):
@@ -152,6 +160,47 @@ def add_timeslot_rank(df):
 train = add_timeslot_rank(train)
 test  = add_timeslot_rank(test)
 print("Timeslot rank features added")
+
+
+# =========================================================
+# v18 NEW: Lag & diff features within scenario
+# 이전 timeslot 값으로 추세(악화/개선)를 피처화
+# =========================================================
+LAG_COLS = [
+    "congestion_score", "charging_ratio_raw", "low_battery_ratio",
+    "order_inflow_15m", "blocked_path_15m",   "near_collision_15m",
+]
+LAG_SCENE_FILL = {
+    "congestion_score":    "scene_congestion_score_mean",
+    "charging_ratio_raw":  "scene_charging_ratio_raw_mean",
+    "low_battery_ratio":   "scene_low_battery_ratio_mean",
+    "order_inflow_15m":    "scene_order_inflow_15m_mean",
+    "blocked_path_15m":    "scene_blocked_path_15m_mean",
+    "near_collision_15m":  "scene_near_collision_15m_mean",
+}
+
+def add_lag_features(df):
+    orig_index = df.index  # 원래 행 순서 저장
+    df = df.sort_values(["scenario_id", "timeslot_rank"]).copy()
+    for col in LAG_COLS:
+        if col not in df.columns:
+            continue
+        g = df.groupby("scenario_id")[col]
+        df[f"{col}_lag1"]  = g.shift(1)
+        df[f"{col}_lag2"]  = g.shift(2)
+        df[f"{col}_diff1"] = df[col] - df[f"{col}_lag1"]
+        # 첫 슬롯 NaN → scene mean으로 대체
+        fill_col = LAG_SCENE_FILL.get(col)
+        if fill_col and fill_col in df.columns:
+            df[f"{col}_lag1"]  = df[f"{col}_lag1"].fillna(df[fill_col])
+            df[f"{col}_lag2"]  = df[f"{col}_lag2"].fillna(df[fill_col])
+        df[f"{col}_diff1"] = df[f"{col}_diff1"].fillna(0)
+    n_new = sum(1 for c in LAG_COLS if c in df.columns) * 3
+    print(f"Lag/diff features added: ~{n_new}")
+    return df.reindex(orig_index)  # 원래 행 순서 복원
+
+train = add_lag_features(train)
+test  = add_lag_features(test)
 
 
 # =========================================================
@@ -322,6 +371,17 @@ def make_features(df):
         df["trip_vs_scene_mean"]  = df["avg_trip_distance"] - df["scene_avg_trip_distance_mean"]
         df["trip_vs_scene_ratio"] = df["avg_trip_distance"] / (df["scene_avg_trip_distance_mean"] + EPS)
 
+    # v18: top scene features × availability_ratio_log1p
+    if "availability_ratio_log1p" in df.columns:
+        for scene_col, short in [
+            ("scene_congestion_score_mean",   "congestion"),
+            ("scene_max_zone_density_mean",   "density"),
+            ("scene_near_collision_15m_mean", "collision"),
+            ("scene_avg_trip_distance_mean",  "trip"),
+        ]:
+            if scene_col in df.columns:
+                _s(f"scene_{short}_x_avail", _p(scene_col, "availability_ratio_log1p"))
+
     return df
 
 
@@ -346,9 +406,16 @@ gkf = GroupKFold(n_splits=N_SPLITS)
 
 
 # =========================================================
-# OOF Target Encoding
-# layout_cluster 추가: unseen test layout도 cluster TE 혜택
+# OOF Target Encoding (v18: Bayesian smoothing 적용)
+# smoothing=10: 샘플 수 적은 카테고리의 TE 분산 억제
 # =========================================================
+TE_SMOOTHING = 10
+
+def _smooth_enc(y_tr, key_tr, gmean, smoothing=TE_SMOOTHING):
+    stats = y_tr.groupby(key_tr).agg(["mean", "count"])
+    smooth = (stats["count"] * stats["mean"] + smoothing * gmean) / (stats["count"] + smoothing)
+    return smooth
+
 def add_oof_te(X, X_test, y, splitter, groups):
     X, X_test = X.copy(), X_test.copy()
     gmean = float(y.mean())
@@ -357,9 +424,10 @@ def add_oof_te(X, X_test, y, splitter, groups):
     for key in [c for c in te_keys if c in X.columns]:
         col = f"te__{key}"
         X[col] = np.nan
-        X_test[col] = X_test[key].map(y.groupby(X[key]).mean()).fillna(gmean)
+        enc_all = _smooth_enc(y, X[key], gmean)
+        X_test[col] = X_test[key].map(enc_all).fillna(gmean)
         for tr_i, va_i in splitter.split(X, y, groups=groups):
-            enc = y.iloc[tr_i].groupby(X[key].iloc[tr_i]).mean()
+            enc = _smooth_enc(y.iloc[tr_i], X[key].iloc[tr_i], gmean)
             X.iloc[va_i, X.columns.get_loc(col)] = (
                 X[key].iloc[va_i].map(enc).fillna(gmean).values
             )
@@ -370,20 +438,22 @@ def add_oof_te(X, X_test, y, splitter, groups):
         ck_t = X_test["layout_id"].astype(str) + "__" + X_test["scenario_id"].astype(str)
         col = "te__layout_scenario"
         X[col] = np.nan
-        X_test[col] = ck_t.map(y.groupby(ck).mean()).fillna(gmean)
+        enc_all = _smooth_enc(y, ck, gmean)
+        X_test[col] = ck_t.map(enc_all).fillna(gmean)
         for tr_i, va_i in splitter.split(X, y, groups=groups):
-            enc = y.iloc[tr_i].groupby(ck.iloc[tr_i]).mean()
+            enc = _smooth_enc(y.iloc[tr_i], ck.iloc[tr_i], gmean)
             X.iloc[va_i, X.columns.get_loc(col)] = ck.iloc[va_i].map(enc).fillna(gmean).values
 
-    # v16: layout_cluster × layout_type combo TE (unseen layout 대응)
+    # layout_cluster × layout_type combo TE
     if "layout_cluster" in X.columns and "layout_type" in X.columns:
         ck   = X["layout_cluster"].astype(str) + "__" + X["layout_type"].astype(str)
         ck_t = X_test["layout_cluster"].astype(str) + "__" + X_test["layout_type"].astype(str)
         col = "te__cluster_type"
         X[col] = np.nan
-        X_test[col] = ck_t.map(y.groupby(ck).mean()).fillna(gmean)
+        enc_all = _smooth_enc(y, ck, gmean)
+        X_test[col] = ck_t.map(enc_all).fillna(gmean)
         for tr_i, va_i in splitter.split(X, y, groups=groups):
-            enc = y.iloc[tr_i].groupby(ck.iloc[tr_i]).mean()
+            enc = _smooth_enc(y.iloc[tr_i], ck.iloc[tr_i], gmean)
             X.iloc[va_i, X.columns.get_loc(col)] = ck.iloc[va_i].map(enc).fillna(gmean).values
 
     return X, X_test
@@ -617,7 +687,7 @@ for tag, fi_list in [("xgb", xgb_fi), ("lgb", lgb_fi)]:
             .sort_values(ascending=False)
             .reset_index()
         )
-        fi_mean.to_csv(DATA_DIR / f"feature_importance_{tag}_v4.csv", index=False)
+        fi_mean.to_csv(DATA_DIR / f"feature_importance_{tag}_v5.csv", index=False)
         print(f"\nTop 20 {tag.upper()} features:")
         print(fi_mean.head(20).to_string(index=False))
 
@@ -632,7 +702,7 @@ oof_df["y_pred_xgb"]   = xgb_oof
 oof_df["y_pred_lgb"]   = lgb_oof
 oof_df["y_pred_blend"] = oof_blend
 oof_df["abs_err"]      = np.abs(oof_df["y_true"] - oof_df["y_pred_blend"])
-oof_df.to_csv(DATA_DIR / "oof_ensemble_v4.csv", index=False)
+oof_df.to_csv(DATA_DIR / "oof_ensemble_v5.csv", index=False)
 
 layout_mae = (
     oof_df.groupby("layout_id")["abs_err"]
@@ -648,10 +718,10 @@ print(layout_mae.head(10))
 # =========================================================
 submission = sample_sub.copy()
 submission[TARGET] = final_pred
-submission.to_csv(DATA_DIR / "submission_ensemble_v4.csv", index=False)
+submission.to_csv(DATA_DIR / "submission_ensemble_v5.csv", index=False)
 
-print("\nSaved: submission_ensemble_v4.csv")
-print("Saved: oof_ensemble_v4.csv")
+print("\nSaved: submission_ensemble_v5.csv")
+print("Saved: oof_ensemble_v5.csv")
 print("Saved: feature_importance_xgb_v3.csv")
 print("Saved: feature_importance_lgb_v3.csv")
 
