@@ -2,6 +2,38 @@
 
 ---
 
+## v21 (2026-04-29)
+
+### 변경 (v17 접근법으로 복귀)
+- **GroupKFold 복귀**: `layout_id only` → `layout_id + scenario_id` 조합 그룹핑
+- **scenario_id 복귀**: label-encoding 재포함, TE 이후 drop 제거
+- **TE smoothing 복귀**: 전체 균일 smoothing=10 (scenario_id 100 → 10)
+- **N_TRIALS 복구**: 40/40 → 80/80 (CAT 40 유지)
+
+### 유지 (v18~v20 누적 개선)
+- SCENE_COLS 18개 (v18 확장)
+- Scenario percentile rank 피처 8개 (v19)
+- Layout clustering k=20 (v17)
+- MLP 제거 (v20)
+
+### 출력 파일
+- `*_v8.csv` → `*_v9.csv`
+
+---
+
+## v20 (2026-04-28)
+
+### 변경
+- **GroupKFold by layout_id only**: 기존 `layout_id + scenario_id` 조합 → `layout_id`만 그룹핑
+  - 이유: val 시나리오가 train 레이아웃과 겹쳐 CV가 과도하게 낙관적 → test 분포(전부 unseen 시나리오)와 격차
+  - 효과: CV 숫자 자체는 올라가지만 Dacon과의 gap 줄어드는 것이 목적
+- **MLP 제거**: CV 10.13, blend weight 0.05 → 기여 미미, 실행 시간 낭비
+
+### 출력 파일
+- `*_v7.csv` → `*_v8.csv`
+
+---
+
 ## v19 (2026-04-28)
 
 ### 변경

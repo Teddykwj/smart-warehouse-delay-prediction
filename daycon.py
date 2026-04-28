@@ -19,7 +19,6 @@ from sklearn.model_selection import GroupKFold
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
-from sklearn.neural_network import MLPRegressor
 try:
     from catboost import CatBoostRegressor
     HAS_CATBOOST = True
@@ -36,9 +35,9 @@ TARGET = "avg_delay_minutes_next_30m"
 ID_COL = "ID"
 N_SPLITS = 5
 RANDOM_STATE = 42
-N_TRIALS_XGB = 80
-N_TRIALS_LGB = 80
-N_TRIALS_CAT = 40
+N_TRIALS_XGB = 40
+N_TRIALS_LGB = 40
+N_TRIALS_CAT = 20
 EPS = 1e-6
 N_LAYOUT_CLUSTERS = 20
 
@@ -395,7 +394,9 @@ X = train[feat_cols].copy()
 X_test = test[feat_cols].copy()
 print(f"features: {len(feat_cols)}")
 
-groups = train["layout_id"].astype(str) + "_" + train["scenario_id"].astype(str)
+# v20: layout_id만으로 그룹핑 → test 분포와 더 유사 (test 시나리오는 전부 unseen)
+# 기존 layout+scenario 조합은 val 시나리오가 train 레이아웃과 겹쳐 CV가 과도하게 낙관적
+groups = train["layout_id"].astype(str)
 gkf = GroupKFold(n_splits=N_SPLITS)
 
 
@@ -463,6 +464,12 @@ def add_oof_te(X, X_test, y, splitter, groups):
 
 
 X, X_test = add_oof_te(X, X_test, y_raw, gkf, groups)
+
+# raw scenario_id 제거: test 시나리오 전부 unseen → 모델이 ID 자체를 외우면 안 됨
+# te__scenario_id(smoothing=100)만 남겨 시나리오 정보 접근
+for _df in [X, X_test]:
+    if "scenario_id" in _df.columns:
+        _df.drop(columns=["scenario_id"], inplace=True)
 print(f"features after TE: {X.shape[1]}")
 
 
@@ -731,75 +738,40 @@ else:
     cat_fi   = []
 
 # =========================================================
-# MLP (v19 NEW)
-# =========================================================
-print("==============================")
-print("MLP Final CV")
-print("==============================")
-_X_np      = X.values.astype("float32")
-_Xt_np     = X_test.values.astype("float32")
-col_med    = np.nanmedian(_X_np, axis=0)
-for j in range(_X_np.shape[1]):
-    _X_np[np.isnan(_X_np[:, j]), j]   = col_med[j]
-    _Xt_np[np.isnan(_Xt_np[:, j]), j] = col_med[j]
-mlp_scaler    = StandardScaler()
-X_sc          = mlp_scaler.fit_transform(_X_np)
-X_test_sc     = mlp_scaler.transform(_Xt_np)
-
-mlp_oof  = np.zeros(len(X))
-mlp_test = np.zeros(len(X_test))
-mlp_params = dict(
-    hidden_layer_sizes=(256, 128, 64),
-    activation="relu",
-    solver="adam",
-    max_iter=300,
-    early_stopping=True,
-    validation_fraction=0.1,
-    n_iter_no_change=20,
-    learning_rate_init=0.001,
-    random_state=RANDOM_STATE,
-)
-for fold, (tr_i, va_i) in enumerate(gkf.split(X, y_sqrt, groups=groups), 1):
-    m = MLPRegressor(**mlp_params)
-    m.fit(X_sc[tr_i], y_sqrt.iloc[tr_i].values)
-    mlp_oof[va_i] = inv_sqrt(np.clip(m.predict(X_sc[va_i]), 0, None))
-    mlp_test     += inv_sqrt(np.clip(m.predict(X_test_sc), 0, None)) / N_SPLITS
-    fold_mae = mean_absolute_error(y_raw.iloc[va_i], mlp_oof[va_i])
-    print(f"  Fold {fold} MAE: {fold_mae:.6f}")
-cv_mlp = mean_absolute_error(y_raw, mlp_oof)
-print(f"  CV MAE: {cv_mlp:.6f}\n")
-
-
-# =========================================================
-# Optimal blend (4-way grid search: XGB / LGB / CAT / MLP)
+# Optimal blend (grid search: XGB / LGB / CAT)
 # =========================================================
 cv_xgb = mean_absolute_error(y_raw, xgb_oof)
 cv_lgb = mean_absolute_error(y_raw, lgb_oof)
 cv_cat = mean_absolute_error(y_raw, cat_oof) if HAS_CATBOOST else float("inf")
-cv_mlp = mean_absolute_error(y_raw, mlp_oof)
 print(f"XGB CV MAE : {cv_xgb:.6f}")
 print(f"LGB CV MAE : {cv_lgb:.6f}")
 print(f"CAT CV MAE : {cv_cat:.6f}")
-print(f"MLP CV MAE : {cv_mlp:.6f}")
 
-step = 0.05
-best_ws, best_cv = (0.25, 0.25, 0.25, 0.25), float("inf")
-for wx in np.arange(0.0, 1.01, step):
-    for wl in np.arange(0.0, 1.01 - wx, step):
-        for wc in np.arange(0.0, 1.01 - wx - wl, step):
-            wm = round(1.0 - wx - wl - wc, 8)
-            if wm < 0:
+if HAS_CATBOOST:
+    step = 0.05
+    best_ws, best_cv = (0.33, 0.33, 0.34), float("inf")
+    for wx in np.arange(0.0, 1.01, step):
+        for wl in np.arange(0.0, 1.01 - wx, step):
+            wc = round(1.0 - wx - wl, 8)
+            if wc < 0:
                 continue
-            blend = wx * xgb_oof + wl * lgb_oof + wc * cat_oof + wm * mlp_oof
-            mae = mean_absolute_error(y_raw, blend)
+            mae = mean_absolute_error(y_raw, wx * xgb_oof + wl * lgb_oof + wc * cat_oof)
             if mae < best_cv:
-                best_cv, best_ws = mae, (wx, wl, wc, wm)
+                best_cv, best_ws = mae, (wx, wl, wc)
+    wx, wl, wc = best_ws
+    print(f"Optimal weights: XGB={wx:.2f} LGB={wl:.2f} CAT={wc:.2f}")
+    final_pred = np.clip(wx * xgb_test + wl * lgb_test + wc * cat_test, 0, None)
+else:
+    best_w, best_cv = 0.5, float("inf")
+    for w in np.arange(0.0, 1.01, 0.02):
+        mae = mean_absolute_error(y_raw, w * xgb_oof + (1 - w) * lgb_oof)
+        if mae < best_cv:
+            best_cv, best_w = mae, w
+    wx, wl, wc = best_w, 1 - best_w, 0.0
+    print(f"Optimal weights: XGB={wx:.2f} LGB={wl:.2f}")
+    final_pred = np.clip(wx * xgb_test + wl * lgb_test, 0, None)
 
-wx, wl, wc, wm = best_ws
-print(f"Optimal weights: XGB={wx:.2f} LGB={wl:.2f} CAT={wc:.2f} MLP={wm:.2f}")
 print(f"Blend CV MAE: {best_cv:.6f}")
-
-final_pred = np.clip(wx * xgb_test + wl * lgb_test + wc * cat_test + wm * mlp_test, 0, None)
 
 
 # =========================================================
@@ -814,7 +786,7 @@ for tag, fi_list in [("xgb", xgb_fi), ("lgb", lgb_fi), ("cat", cat_fi)]:
             .sort_values(ascending=False)
             .reset_index()
         )
-        fi_mean.to_csv(DATA_DIR / f"feature_importance_{tag}_v6.csv", index=False)
+        fi_mean.to_csv(DATA_DIR / f"feature_importance_{tag}_v8.csv", index=False)
         print(f"\nTop 20 {tag.upper()} features:")
         print(fi_mean.head(20).to_string(index=False))
 
@@ -822,16 +794,15 @@ for tag, fi_list in [("xgb", xgb_fi), ("lgb", lgb_fi), ("cat", cat_fi)]:
 # =========================================================
 # OOF diagnostics
 # =========================================================
-oof_blend = wx * xgb_oof + wl * lgb_oof + wc * cat_oof + wm * mlp_oof
+oof_blend = wx * xgb_oof + wl * lgb_oof + wc * cat_oof
 oof_df = train[[ID_COL, "layout_id", "scenario_id"]].copy()
 oof_df["y_true"]       = y_raw.values
 oof_df["y_pred_xgb"]   = xgb_oof
 oof_df["y_pred_lgb"]   = lgb_oof
 oof_df["y_pred_cat"]   = cat_oof
-oof_df["y_pred_mlp"]   = mlp_oof
 oof_df["y_pred_blend"] = oof_blend
 oof_df["abs_err"]      = np.abs(oof_df["y_true"] - oof_df["y_pred_blend"])
-oof_df.to_csv(DATA_DIR / "oof_ensemble_v6.csv", index=False)
+oof_df.to_csv(DATA_DIR / "oof_ensemble_v8.csv", index=False)
 
 layout_mae = (
     oof_df.groupby("layout_id")["abs_err"]
@@ -847,14 +818,14 @@ print(layout_mae.head(10))
 # =========================================================
 submission = sample_sub.copy()
 submission[TARGET] = final_pred
-submission.to_csv(DATA_DIR / "submission_ensemble_v6.csv", index=False)
+submission.to_csv(DATA_DIR / "submission_ensemble_v8.csv", index=False)
 
-print("\nSaved: submission_ensemble_v6.csv")
-print("Saved: oof_ensemble_v6.csv")
-print("Saved: feature_importance_xgb_v6.csv")
-print("Saved: feature_importance_lgb_v6.csv")
+print("\nSaved: submission_ensemble_v8.csv")
+print("Saved: oof_ensemble_v8.csv")
+print("Saved: feature_importance_xgb_v8.csv")
+print("Saved: feature_importance_lgb_v8.csv")
 if HAS_CATBOOST:
-    print("Saved: feature_importance_cat_v6.csv")
+    print("Saved: feature_importance_cat_v8.csv")
 
 
 # =========================================================
@@ -863,7 +834,7 @@ if HAS_CATBOOST:
 print("\n=== Sanity Check ===")
 for name, arr in [("y_raw", y_raw), ("xgb_oof", xgb_oof),
                   ("lgb_oof", lgb_oof), ("cat_oof", cat_oof),
-                  ("mlp_oof", mlp_oof), ("final_pred", final_pred)]:
+                  ("final_pred", final_pred)]:
     s = pd.Series(arr)
     print(f"{name:15s}  min={s.min():.3f}  mean={s.mean():.3f}  "
           f"max={s.max():.3f}  nan={s.isna().sum()}")
