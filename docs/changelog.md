@@ -2,6 +2,36 @@
 
 ---
 
+## v19 (2026-04-28)
+
+### 변경
+- **scenario_id label-encoding 제거**: 카테고리 raw ID 피처에서 제외 → `te__scenario_id`만으로 시나리오 정보 접근
+  - 이유: test 시나리오 전부 unseen → raw ID는 train에만 존재하는 노이즈
+- **scenario_id TE smoothing 강화**: 10 → 100 (train/test 분포 격차 최소화)
+  - layout_id, layout_type, layout_cluster는 smoothing=10 유지
+
+### 추가
+- **Scenario percentile rank 피처** (lag 대신): 8개 컬럼의 시나리오 내 백분위 순위 (`*_scene_pct`)
+  - 대상: `congestion_score`, `charging_ratio_raw`, `low_battery_ratio`, `order_inflow_15m`, `blocked_path_15m`, `near_collision_15m`, `avg_trip_distance`, `max_zone_density`
+  - lag와 달리 ordering-independent → 정렬 순서 버그 없음
+- **CatBoost 추가**: Optuna 40 trials, CPU, Bernoulli bootstrap, early stopping 100
+  - catboost 미설치 시 자동 skip (try/except)
+- **MLP 추가**: sklearn MLPRegressor (256, 128, 64), ReLU, Adam, max_iter=300
+  - StandardScaler 정규화, early_stopping=True, GroupKFold CV
+- **4-way 블렌드**: XGB / LGB / CAT / MLP 가중치 grid search (step=0.05)
+
+### 제거
+- **Lag / diff 피처** (v18): 순서 의존적 + Dacon 점수 악화 → 제거
+
+### 버그 수정 (v19b)
+- **scenario_id fallback encoding 버그**: `select_dtypes("object")` fallback 루프가 scenario_id를 재포함 → TE 이후 raw `scenario_id` 컬럼 자체를 drop으로 완전 차단
+  - `encoded cat cols` 로그 확인: ['layout_id', 'layout_type', 'layout_cluster', 'scenario_id'] → 버그 존재 확인
+
+### 출력 파일
+- `*_v5.csv` → `*_v6.csv` (v19 초기) → `*_v7.csv` (scenario_id drop 수정 후)
+
+---
+
 ## v18 (2026-04-26)
 
 ### 추가

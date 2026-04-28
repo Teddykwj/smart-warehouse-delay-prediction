@@ -4,7 +4,7 @@
 >
 > Dacon 베스트: **v17** — Dacon Public `10.4058` (CV MAE `8.8640`)
 >
-> CV-Dacon Gap 추이: 초기 ~1.59 → v15 ~1.60 → v16 1.547 → v17 1.542 → v18 미제출
+> CV-Dacon Gap 추이: 초기 ~1.59 → v15 ~1.60 → v16 1.547 → v17 1.542 → v18 1.645 → v19 1.617
 
 | # | Date | Version | XGB CV MAE | LGB CV MAE | Blend CV MAE | XGB Weight | Dacon MAE | CV-Dacon Gap | Notes |
 |---|------|---------|-----------|-----------|-------------|-----------|----------|-------------|-------|
@@ -29,6 +29,7 @@
 | 16 | 2026-04-25 | **v16** ★ | 8.947343 | 8.953853 | 8.942603 | 0.60 | **10.489869** | **1.547266** | 시나리오 컨텍스트 피처(25개), 레이아웃 클러스터링 K-means(15) + cluster TE, availability_ratio 다항식, 192→198 features, Optuna 60trials — **Dacon 베스트** |
 | 17 | 2026-04-26 | **v17** ★ | 8.877776 | 8.865889 | 8.864023 | 0.26 | **10.405795** | **1.541772** | SCENE_COLS 5→12개, timeslot rank 피처, availability/trip/미사용컬럼 interaction 추가, scene×현재 interaction 2→6쌍, N_LAYOUT_CLUSTERS 15→20, Optuna 60→80trials — **Dacon 베스트** |
 | 18 | 2026-04-26 | v18 | 8.858958 | 8.856323 | 8.850300 | 0.46 | 10.495149 | 1.645149 | SCENE_COLS 12→18개, lag/diff 피처 18개(→저중요도+Dacon악화), scene×avail_ratio 교차 4쌍, Smoothed TE, 305 features — lag 버그 수정 후 재제출했으나 v17 대비 Dacon 하락 |
+| 19 | 2026-04-28 | v19 | 8.869424 | 8.869756 | 8.852557 | 0.45 | 10.470034 | 1.617477 | scenario_id TE smoothing 10→100, scenario percentile rank(8개), MLP 추가(CV 10.13, 기여 0.05), CatBoost 미설치(skip) — **버그**: fallback loop가 scenario_id 재포함, TE 약화(smoothing=100)+raw ID 혼재 → 양쪽 신호 모두 약해짐, CV·Dacon 모두 v17 대비 하락 |
 
 ---
 
@@ -44,3 +45,6 @@
 - **v18 XGB weight 회복**: 0.26→0.46 — lag/diff 피처로 XGB-LGB 균형 회복
 - **v18 LGB top 피처**: `scene_charge_efficiency_pct_*`, `scene_path_optimization_score_*` — v18 신규 SCENE_COLS가 즉시 상위권 진입
 - **고오차 레이아웃 v18**: WH_051(33.5), WH_073(33.4), WH_217(32.9), WH_049(32.2), WH_098(29.7) — v17 대비 소폭 혼조
+- **v19 scenario_id 격리 실패**: `cat_cols` 명시 목록에서 제거해도 fallback `select_dtypes("object")` 루프가 재포함 → TE smoothing 100으로 약화 + raw ID는 여전히 존재 → 양쪽 신호 모두 손상, gap 1.617로 오히려 악화
+- **scenario_id 격리 교훈**: TE 이후 raw 컬럼을 `drop()`으로 완전 제거해야 의도한 격리 달성 (v7에 수정)
+- **MLP 한계**: sklearn MLPRegressor CV 10.13 — 트리 모델 대비 현저히 약함, 이 데이터셋에서 앙상블 기여 미미 (0.05 weight)
