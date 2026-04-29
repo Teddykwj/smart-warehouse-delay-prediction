@@ -4,7 +4,7 @@
 >
 > Dacon 베스트: **v17** — Dacon Public `10.4058` (CV MAE `8.8640`)
 >
-> CV-Dacon Gap 추이: 초기 ~1.59 → v15 ~1.60 → v16 1.547 → v17 1.542 → v18 1.645 → v19 1.617 → v20 1.561
+> CV-Dacon Gap 추이: 초기 ~1.59 → v15 ~1.60 → v16 1.547 → v17 1.542 → v18 1.645 → v19 1.617 → v20 1.561 → v21 1.612
 
 | # | Date | Version | XGB CV MAE | LGB CV MAE | Blend CV MAE | XGB Weight | Dacon MAE | CV-Dacon Gap | Notes |
 |---|------|---------|-----------|-----------|-------------|-----------|----------|-------------|-------|
@@ -31,6 +31,7 @@
 | 18 | 2026-04-26 | v18 | 8.858958 | 8.856323 | 8.850300 | 0.46 | 10.495149 | 1.645149 | SCENE_COLS 12→18개, lag/diff 피처 18개(→저중요도+Dacon악화), scene×avail_ratio 교차 4쌍, Smoothed TE, 305 features — lag 버그 수정 후 재제출했으나 v17 대비 Dacon 하락 |
 | 19 | 2026-04-28 | v19 | 8.869424 | 8.869756 | 8.852557 | 0.45 | 10.470034 | 1.617477 | scenario_id TE smoothing 10→100, scenario percentile rank(8개), MLP 추가(CV 10.13, 기여 0.05), CatBoost 미설치(skip) — **버그**: fallback loop가 scenario_id 재포함, TE 약화(smoothing=100)+raw ID 혼재 → 양쪽 신호 모두 약해짐, CV·Dacon 모두 v17 대비 하락 |
 | 20 | 2026-04-28 | v20 | 8.908573 | 8.913100 | 8.901196 | 0.56 | 10.462152 | 1.560956 | **GroupKFold by layout_id only**, scenario_id 완전 drop, MLP 제거, Trials 80→40 — v19(10.470)보다 소폭 개선됐으나 v17 베스트(10.406) 미달, scenario_id 제거 단독 효과는 긍정적이지만 충분하지 않음 |
+| 21 | 2026-04-29 | v21 | 8.869424 | 8.869756 | 8.861560 | 0.50 | 10.473961 | 1.612401 | v17 인코딩 복귀 + SCENE_COLS 18 + percentile rank 유지 — **Optuna trials·CV 값이 v19와 완전 동일** (seed 고정 + 동일 피처셋), SCENE_COLS 18 확장분(+6개)과 percentile rank가 CV↑ Dacon↓ 유발 가능성 높음 |
 
 ---
 

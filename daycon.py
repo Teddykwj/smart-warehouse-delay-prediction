@@ -35,9 +35,9 @@ TARGET = "avg_delay_minutes_next_30m"
 ID_COL = "ID"
 N_SPLITS = 5
 RANDOM_STATE = 42
-N_TRIALS_XGB = 40
-N_TRIALS_LGB = 40
-N_TRIALS_CAT = 20
+N_TRIALS_XGB = 80
+N_TRIALS_LGB = 80
+N_TRIALS_CAT = 40
 EPS = 1e-6
 N_LAYOUT_CLUSTERS = 20
 
@@ -394,9 +394,7 @@ X = train[feat_cols].copy()
 X_test = test[feat_cols].copy()
 print(f"features: {len(feat_cols)}")
 
-# v20: layout_id만으로 그룹핑 → test 분포와 더 유사 (test 시나리오는 전부 unseen)
-# 기존 layout+scenario 조합은 val 시나리오가 train 레이아웃과 겹쳐 CV가 과도하게 낙관적
-groups = train["layout_id"].astype(str)
+groups = train["layout_id"].astype(str) + "_" + train["scenario_id"].astype(str)
 gkf = GroupKFold(n_splits=N_SPLITS)
 
 
@@ -404,17 +402,9 @@ gkf = GroupKFold(n_splits=N_SPLITS)
 # OOF Target Encoding (v18: Bayesian smoothing 적용)
 # smoothing=10: 샘플 수 적은 카테고리의 TE 분산 억제
 # =========================================================
-TE_SMOOTHING_DEFAULT = 10
-# scenario_id: test 시나리오는 전부 unseen → 높은 smoothing으로 train/test 분포 격차 최소화
-TE_SMOOTHING_SCENARIO = 100
-KEY_SMOOTHING = {
-    "layout_id":      TE_SMOOTHING_DEFAULT,
-    "scenario_id":    TE_SMOOTHING_SCENARIO,
-    "layout_type":    TE_SMOOTHING_DEFAULT,
-    "layout_cluster": TE_SMOOTHING_DEFAULT,
-}
+TE_SMOOTHING = 10
 
-def _smooth_enc(y_tr, key_tr, gmean, smoothing=TE_SMOOTHING_DEFAULT):
+def _smooth_enc(y_tr, key_tr, gmean, smoothing=TE_SMOOTHING):
     stats = y_tr.groupby(key_tr).agg(["mean", "count"])
     smooth = (stats["count"] * stats["mean"] + smoothing * gmean) / (stats["count"] + smoothing)
     return smooth
@@ -425,13 +415,12 @@ def add_oof_te(X, X_test, y, splitter, groups):
 
     te_keys = ["layout_id", "scenario_id", "layout_type", "layout_cluster"]
     for key in [c for c in te_keys if c in X.columns]:
-        sm = KEY_SMOOTHING.get(key, TE_SMOOTHING_DEFAULT)
         col = f"te__{key}"
         X[col] = np.nan
-        enc_all = _smooth_enc(y, X[key], gmean, smoothing=sm)
+        enc_all = _smooth_enc(y, X[key], gmean)
         X_test[col] = X_test[key].map(enc_all).fillna(gmean)
         for tr_i, va_i in splitter.split(X, y, groups=groups):
-            enc = _smooth_enc(y.iloc[tr_i], X[key].iloc[tr_i], gmean, smoothing=sm)
+            enc = _smooth_enc(y.iloc[tr_i], X[key].iloc[tr_i], gmean)
             X.iloc[va_i, X.columns.get_loc(col)] = (
                 X[key].iloc[va_i].map(enc).fillna(gmean).values
             )
@@ -464,21 +453,13 @@ def add_oof_te(X, X_test, y, splitter, groups):
 
 
 X, X_test = add_oof_te(X, X_test, y_raw, gkf, groups)
-
-# raw scenario_id 제거: test 시나리오 전부 unseen → 모델이 ID 자체를 외우면 안 됨
-# te__scenario_id(smoothing=100)만 남겨 시나리오 정보 접근
-for _df in [X, X_test]:
-    if "scenario_id" in _df.columns:
-        _df.drop(columns=["scenario_id"], inplace=True)
 print(f"features after TE: {X.shape[1]}")
 
 
 # =========================================================
 # Categorical encoding
 # =========================================================
-# scenario_id는 label-encoding 제외: test 시나리오 전부 unseen → raw ID는 노이즈
-# te__scenario_id (smoothing=100)만으로 시나리오 정보 접근
-cat_cols = [c for c in ["layout_id", "layout_type", "layout_cluster"]
+cat_cols = [c for c in ["layout_id", "scenario_id", "layout_type", "layout_cluster"]
             if c in X.columns]
 for c in X.select_dtypes("object").columns:
     if c not in cat_cols:
@@ -786,7 +767,7 @@ for tag, fi_list in [("xgb", xgb_fi), ("lgb", lgb_fi), ("cat", cat_fi)]:
             .sort_values(ascending=False)
             .reset_index()
         )
-        fi_mean.to_csv(DATA_DIR / f"feature_importance_{tag}_v8.csv", index=False)
+        fi_mean.to_csv(DATA_DIR / f"feature_importance_{tag}_v9.csv", index=False)
         print(f"\nTop 20 {tag.upper()} features:")
         print(fi_mean.head(20).to_string(index=False))
 
@@ -802,7 +783,7 @@ oof_df["y_pred_lgb"]   = lgb_oof
 oof_df["y_pred_cat"]   = cat_oof
 oof_df["y_pred_blend"] = oof_blend
 oof_df["abs_err"]      = np.abs(oof_df["y_true"] - oof_df["y_pred_blend"])
-oof_df.to_csv(DATA_DIR / "oof_ensemble_v8.csv", index=False)
+oof_df.to_csv(DATA_DIR / "oof_ensemble_v9.csv", index=False)
 
 layout_mae = (
     oof_df.groupby("layout_id")["abs_err"]
@@ -818,14 +799,14 @@ print(layout_mae.head(10))
 # =========================================================
 submission = sample_sub.copy()
 submission[TARGET] = final_pred
-submission.to_csv(DATA_DIR / "submission_ensemble_v8.csv", index=False)
+submission.to_csv(DATA_DIR / "submission_ensemble_v9.csv", index=False)
 
-print("\nSaved: submission_ensemble_v8.csv")
-print("Saved: oof_ensemble_v8.csv")
-print("Saved: feature_importance_xgb_v8.csv")
-print("Saved: feature_importance_lgb_v8.csv")
+print("\nSaved: submission_ensemble_v9.csv")
+print("Saved: oof_ensemble_v9.csv")
+print("Saved: feature_importance_xgb_v9.csv")
+print("Saved: feature_importance_lgb_v9.csv")
 if HAS_CATBOOST:
-    print("Saved: feature_importance_cat_v8.csv")
+    print("Saved: feature_importance_cat_v9.csv")
 
 
 # =========================================================
