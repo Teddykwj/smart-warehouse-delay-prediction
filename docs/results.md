@@ -4,7 +4,7 @@
 >
 > Dacon 베스트: **v17** — Dacon Public `10.4058` (CV MAE `8.8640`)
 >
-> CV-Dacon Gap 추이: 초기 ~1.59 → v15 ~1.60 → v16 1.547 → v17 1.542 → v18 1.645 → v19 1.617 → v20 1.561 → v21 1.612
+> CV-Dacon Gap 추이: 초기 ~1.59 → v15 ~1.60 → v16 1.547 → v17 1.542 → v18 1.645 → v19 1.617 → v20 1.561 → v21 1.612 → v22 1.565
 
 | # | Date | Version | XGB CV MAE | LGB CV MAE | Blend CV MAE | XGB Weight | Dacon MAE | CV-Dacon Gap | Notes |
 |---|------|---------|-----------|-----------|-------------|-----------|----------|-------------|-------|
@@ -32,6 +32,7 @@
 | 19 | 2026-04-28 | v19 | 8.869424 | 8.869756 | 8.852557 | 0.45 | 10.470034 | 1.617477 | scenario_id TE smoothing 10→100, scenario percentile rank(8개), MLP 추가(CV 10.13, 기여 0.05), CatBoost 미설치(skip) — **버그**: fallback loop가 scenario_id 재포함, TE 약화(smoothing=100)+raw ID 혼재 → 양쪽 신호 모두 약해짐, CV·Dacon 모두 v17 대비 하락 |
 | 20 | 2026-04-28 | v20 | 8.908573 | 8.913100 | 8.901196 | 0.56 | 10.462152 | 1.560956 | **GroupKFold by layout_id only**, scenario_id 완전 drop, MLP 제거, Trials 80→40 — v19(10.470)보다 소폭 개선됐으나 v17 베스트(10.406) 미달, scenario_id 제거 단독 효과는 긍정적이지만 충분하지 않음 |
 | 21 | 2026-04-29 | v21 | 8.869424 | 8.869756 | 8.861560 | 0.50 | 10.473961 | 1.612401 | v17 인코딩 복귀 + SCENE_COLS 18 + percentile rank 유지 — **Optuna trials·CV 값이 v19와 완전 동일** (seed 고정 + 동일 피처셋), SCENE_COLS 18 확장분(+6개)과 percentile rank가 CV↑ Dacon↓ 유발 가능성 높음 |
+| 22 | 2026-04-30 | v22 | 8.875334 | 8.876020 | 8.869048 | 0.52 | 10.434017 | 1.564969 | SCENE_COLS 18→12 복귀, percentile rank 제거, **Pseudo-labeling 첫 적용** (train 250k + test pseudo 50k → 300k 재학습) — v17 미달이나 v18~v21 중 최고 Dacon, gap 1.612→1.565로 개선 |
 
 ---
 
@@ -47,6 +48,9 @@
 - **v18 XGB weight 회복**: 0.26→0.46 — lag/diff 피처로 XGB-LGB 균형 회복
 - **v18 LGB top 피처**: `scene_charge_efficiency_pct_*`, `scene_path_optimization_score_*` — v18 신규 SCENE_COLS가 즉시 상위권 진입
 - **고오차 레이아웃 v18**: WH_051(33.5), WH_073(33.4), WH_217(32.9), WH_049(32.2), WH_098(29.7) — v17 대비 소폭 혼조
+- **고오차 레이아웃 v22**: WH_051(33.5), WH_073(33.4), WH_217(32.8), WH_049(32.3), WH_098(29.7) — v21 대비 큰 변화 없음
 - **v19 scenario_id 격리 실패**: `cat_cols` 명시 목록에서 제거해도 fallback `select_dtypes("object")` 루프가 재포함 → TE smoothing 100으로 약화 + raw ID는 여전히 존재 → 양쪽 신호 모두 손상, gap 1.617로 오히려 악화
 - **scenario_id 격리 교훈**: TE 이후 raw 컬럼을 `drop()`으로 완전 제거해야 의도한 격리 달성 (v7에 수정)
 - **MLP 한계**: sklearn MLPRegressor CV 10.13 — 트리 모델 대비 현저히 약함, 이 데이터셋에서 앙상블 기여 미미 (0.05 weight)
+- **Pseudo-labeling 효과 (v22)**: gap 1.612→1.565로 소폭 축소, Dacon 10.474→10.434로 개선 — 완전한 분포 격차 해소에는 미흡하지만 유효한 신호. aug MAE (XGB 5.38 / LGB 5.78)는 pseudo 자기회귀 특성상 낮음, 실제 개선은 Dacon 스코어로 판단
+- **SCENE_COLS 18 확장 vs 12**: v21(18개)→v22(12개) 복귀 시 Dacon 10.474→10.434 — SCENE_COLS 추가 6개는 과적합 피처로 확정

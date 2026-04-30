@@ -101,7 +101,6 @@ SCENE_COLS = [
     "low_battery_ratio",
     "order_inflow_15m",
     "robot_utilization",
-    # v17 NEW
     "fault_count_15m",
     "near_collision_15m",
     "blocked_path_15m",
@@ -109,13 +108,6 @@ SCENE_COLS = [
     "max_zone_density",
     "task_reassign_15m",
     "avg_recovery_time",
-    # v18 NEW
-    "battery_mean",
-    "avg_charge_wait",
-    "charge_efficiency_pct",
-    "aisle_traffic_score",
-    "path_optimization_score",
-    "intersection_wait_time_avg",
 ]
 
 def precompute_scene_ratios(df):
@@ -168,32 +160,6 @@ train = add_timeslot_rank(train)
 test  = add_timeslot_rank(test)
 print("Timeslot rank features added")
 
-
-# =========================================================
-# v19 NEW: Scenario percentile rank features
-# lag 대신 ordering-independent하게 "이 timeslot이 시나리오에서 얼마나 심각한가"
-# =========================================================
-RANK_COLS = [
-    "congestion_score", "charging_ratio_raw", "low_battery_ratio",
-    "order_inflow_15m", "blocked_path_15m",   "near_collision_15m",
-    "avg_trip_distance", "max_zone_density",
-]
-
-def add_scenario_rank_features(df):
-    df = df.copy()
-    for col in RANK_COLS:
-        if col in df.columns:
-            df[f"{col}_scene_pct"] = (
-                df.groupby("scenario_id")[col]
-                .rank(pct=True)
-                .astype("float32")
-            )
-    n = sum(1 for c in RANK_COLS if c in df.columns)
-    print(f"Scenario percentile rank features: {n}")
-    return df
-
-train = add_scenario_rank_features(train)
-test  = add_scenario_rank_features(test)
 
 
 # =========================================================
@@ -756,6 +722,60 @@ print(f"Blend CV MAE: {best_cv:.6f}")
 
 
 # =========================================================
+# Pseudo-labeling retraining (v22 NEW)
+# 1차 블렌드 예측 → test pseudo-label → train+test 합쳐 재학습
+# train/test 분포 격차를 줄이는 핵심 구조적 개선
+# =========================================================
+print("\n=== Pseudo-labeling Retraining ===")
+
+# 1차 블렌드 예측을 pseudo-label로 사용
+pseudo_labels      = final_pred.copy()
+pseudo_labels_sqrt = t_sqrt(pseudo_labels)
+
+# train + test 합산 (X_test는 이미 동일 피처 스키마)
+X_aug      = pd.concat([X, X_test], ignore_index=True)
+y_aug_sqrt = np.concatenate([y_sqrt.values, pseudo_labels_sqrt])
+
+# XGB 재학습 (early_stopping 없이 best n_estimators 고정)
+print("XGB retrain on augmented data...")
+_xgb_p = {k: v for k, v in xgb_full_params.items() if k != "early_stopping_rounds"}
+try:
+    _xgb_aug = XGBRegressor(**_xgb_p)
+    _xgb_aug.fit(X_aug, y_aug_sqrt, verbose=False)
+except Exception as e:
+    if "CUDA_ERROR" in str(e) or "cuMem" in str(e):
+        print("  CUDA error → CPU fallback")
+        _xgb_aug = XGBRegressor(**{**_xgb_p, "device": "cpu", "n_jobs": -1})
+        _xgb_aug.fit(X_aug, y_aug_sqrt, verbose=False)
+    else:
+        raise
+xgb_aug_test = inv_sqrt(np.clip(_xgb_aug.predict(X_test), 0, None))
+print(f"  XGB aug MAE (pseudo check): "
+      f"{mean_absolute_error(y_raw, inv_sqrt(np.clip(_xgb_aug.predict(X), 0, None))):.4f}")
+
+# LGB 재학습
+print("LGB retrain on augmented data...")
+_lgb_aug = LGBMRegressor(**lgb_full_params)
+_lgb_aug.fit(X_aug, y_aug_sqrt, callbacks=[lgb.log_evaluation(period=0)])
+lgb_aug_test = inv_sqrt(np.clip(_lgb_aug.predict(X_test), 0, None))
+print(f"  LGB aug MAE (pseudo check): "
+      f"{mean_absolute_error(y_raw, inv_sqrt(np.clip(_lgb_aug.predict(X), 0, None))):.4f}")
+
+# CatBoost 재학습 (설치된 경우)
+if HAS_CATBOOST and study_cat is not None:
+    print("CAT retrain on augmented data...")
+    _cat_aug = CatBoostRegressor(**cat_full_params)
+    _cat_aug.fit(X_aug.fillna(0), y_aug_sqrt, verbose=0)
+    cat_aug_test = inv_sqrt(np.clip(_cat_aug.predict(X_test.fillna(0)), 0, None))
+else:
+    cat_aug_test = cat_test  # zeros if not installed
+
+# 최종 예측: 1차 가중치 그대로 적용
+final_pred = np.clip(wx * xgb_aug_test + wl * lgb_aug_test + wc * cat_aug_test, 0, None)
+print(f"Pseudo-labeling complete → final_pred updated")
+
+
+# =========================================================
 # Feature importance
 # =========================================================
 for tag, fi_list in [("xgb", xgb_fi), ("lgb", lgb_fi), ("cat", cat_fi)]:
@@ -767,7 +787,7 @@ for tag, fi_list in [("xgb", xgb_fi), ("lgb", lgb_fi), ("cat", cat_fi)]:
             .sort_values(ascending=False)
             .reset_index()
         )
-        fi_mean.to_csv(DATA_DIR / f"feature_importance_{tag}_v9.csv", index=False)
+        fi_mean.to_csv(DATA_DIR / f"feature_importance_{tag}_v10.csv", index=False)
         print(f"\nTop 20 {tag.upper()} features:")
         print(fi_mean.head(20).to_string(index=False))
 
@@ -783,7 +803,7 @@ oof_df["y_pred_lgb"]   = lgb_oof
 oof_df["y_pred_cat"]   = cat_oof
 oof_df["y_pred_blend"] = oof_blend
 oof_df["abs_err"]      = np.abs(oof_df["y_true"] - oof_df["y_pred_blend"])
-oof_df.to_csv(DATA_DIR / "oof_ensemble_v9.csv", index=False)
+oof_df.to_csv(DATA_DIR / "oof_ensemble_v10.csv", index=False)
 
 layout_mae = (
     oof_df.groupby("layout_id")["abs_err"]
@@ -799,14 +819,14 @@ print(layout_mae.head(10))
 # =========================================================
 submission = sample_sub.copy()
 submission[TARGET] = final_pred
-submission.to_csv(DATA_DIR / "submission_ensemble_v9.csv", index=False)
+submission.to_csv(DATA_DIR / "submission_ensemble_v10.csv", index=False)
 
-print("\nSaved: submission_ensemble_v9.csv")
-print("Saved: oof_ensemble_v9.csv")
-print("Saved: feature_importance_xgb_v9.csv")
-print("Saved: feature_importance_lgb_v9.csv")
+print("\nSaved: submission_ensemble_v10.csv")
+print("Saved: oof_ensemble_v10.csv")
+print("Saved: feature_importance_xgb_v10.csv")
+print("Saved: feature_importance_lgb_v10.csv")
 if HAS_CATBOOST:
-    print("Saved: feature_importance_cat_v9.csv")
+    print("Saved: feature_importance_cat_v10.csv")
 
 
 # =========================================================

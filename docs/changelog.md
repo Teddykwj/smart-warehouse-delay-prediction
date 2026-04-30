@@ -2,6 +2,26 @@
 
 ---
 
+## v22 (2026-04-29)
+
+### 변경
+- **SCENE_COLS 복귀**: 18개 → 12개 (v17 수준) — v18 추가분 6개 제거
+  - 제거: `battery_mean`, `avg_charge_wait`, `charge_efficiency_pct`, `aisle_traffic_score`, `path_optimization_score`, `intersection_wait_time_avg`
+- **Scenario percentile rank 제거**: v18~v21에서 CV↑ Dacon↓ 유발 피처 제거
+
+### 추가
+- **Pseudo-labeling 재학습** (핵심 신규):
+  1. 1차 XGB+LGB+CAT 블렌드 → test pseudo-label 생성
+  2. train(250k) + test(50k) 합산 → 300k 재학습
+  3. 동일 Optuna 하이퍼파라미터 사용 (early_stopping 제거, n_estimators 고정)
+  4. 재학습 모델로 최종 test 예측
+  - **목적**: train/test 분포 격차(~1.54 gap) 구조적으로 줄이기
+
+### 출력 파일
+- `*_v9.csv` → `*_v10.csv`
+
+---
+
 ## v21 (2026-04-29)
 
 ### 변경 (v17 접근법으로 복귀)
