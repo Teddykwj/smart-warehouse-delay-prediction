@@ -2,9 +2,9 @@
 
 > CV 베스트: **v18** — Blend CV MAE `8.8503`
 >
-> Dacon 베스트: **v17** — Dacon Public `10.4058` (CV MAE `8.8640`)
+> Dacon 베스트: **v23** ★ — Dacon Public `10.3999` (CV MAE `8.8640`)
 >
-> CV-Dacon Gap 추이: 초기 ~1.59 → v15 ~1.60 → v16 1.547 → v17 1.542 → v18 1.645 → v19 1.617 → v20 1.561 → v21 1.612 → v22 1.565
+> CV-Dacon Gap 추이: 초기 ~1.59 → v15 ~1.60 → v16 1.547 → v17 1.542 → v18 1.645 → v19 1.617 → v20 1.561 → v21 1.612 → v22 1.565 → v23 1.536
 
 | # | Date | Version | XGB CV MAE | LGB CV MAE | Blend CV MAE | XGB Weight | Dacon MAE | CV-Dacon Gap | Notes |
 |---|------|---------|-----------|-----------|-------------|-----------|----------|-------------|-------|
@@ -33,6 +33,7 @@
 | 20 | 2026-04-28 | v20 | 8.908573 | 8.913100 | 8.901196 | 0.56 | 10.462152 | 1.560956 | **GroupKFold by layout_id only**, scenario_id 완전 drop, MLP 제거, Trials 80→40 — v19(10.470)보다 소폭 개선됐으나 v17 베스트(10.406) 미달, scenario_id 제거 단독 효과는 긍정적이지만 충분하지 않음 |
 | 21 | 2026-04-29 | v21 | 8.869424 | 8.869756 | 8.861560 | 0.50 | 10.473961 | 1.612401 | v17 인코딩 복귀 + SCENE_COLS 18 + percentile rank 유지 — **Optuna trials·CV 값이 v19와 완전 동일** (seed 고정 + 동일 피처셋), SCENE_COLS 18 확장분(+6개)과 percentile rank가 CV↑ Dacon↓ 유발 가능성 높음 |
 | 22 | 2026-04-30 | v22 | 8.875334 | 8.876020 | 8.869048 | 0.52 | 10.434017 | 1.564969 | SCENE_COLS 18→12 복귀, percentile rank 제거, **Pseudo-labeling 첫 적용** (train 250k + test pseudo 50k → 300k 재학습) — v17 미달이나 v18~v21 중 최고 Dacon, gap 1.612→1.565로 개선 |
+| 23 | 2026-05-02 | **v23** ★ | 8.877776 | 8.865889 | 8.864023 | 0.26 | **10.399882** | **1.535859** | **TE simple mean 복귀** (v18 Bayesian smoothing 제거), scene×avail 교차 4개 제거 (v18 추가분), pseudo-labeling 유지 — **Dacon 베스트 갱신** (v17 10.406 → v23 10.400), CV는 v17과 완전 동일 (동일 seed+피처), pseudo-labeling 순수 효과 +0.006 확인 |
 
 ---
 
@@ -54,3 +55,5 @@
 - **MLP 한계**: sklearn MLPRegressor CV 10.13 — 트리 모델 대비 현저히 약함, 이 데이터셋에서 앙상블 기여 미미 (0.05 weight)
 - **Pseudo-labeling 효과 (v22)**: gap 1.612→1.565로 소폭 축소, Dacon 10.474→10.434로 개선 — 완전한 분포 격차 해소에는 미흡하지만 유효한 신호. aug MAE (XGB 5.38 / LGB 5.78)는 pseudo 자기회귀 특성상 낮음, 실제 개선은 Dacon 스코어로 판단
 - **SCENE_COLS 18 확장 vs 12**: v21(18개)→v22(12개) 복귀 시 Dacon 10.474→10.434 — SCENE_COLS 추가 6개는 과적합 피처로 확정
+- **Bayesian TE 역효과**: v18 smoothed TE → v23에서 simple mean(v17 방식)으로 복귀 시 Dacon 개선 — smoothing이 오히려 정보 손실 유발
+- **v17 피처셋 + pseudo-labeling = 최적 조합 (v23)**: CV 동일(8.8640), Dacon 10.406→10.400, gap 1.542→1.536 — pseudo-labeling의 순수 효과 +0.006 확정

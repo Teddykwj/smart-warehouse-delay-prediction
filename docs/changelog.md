@@ -2,6 +2,24 @@
 
 ---
 
+## v23 (2026-04-30)
+
+### 변경 (v17 완전 복귀 + pseudo-labeling 유지)
+- **TE 복귀**: Bayesian smoothed TE (v18) → v17 simple mean TE
+  - 이유: v18 이후 모든 Dacon 스코어가 v17(10.406) 미달 → smoothing이 오히려 정보 손실 가능성
+- **scene×avail 교차 피처 제거**: `scene_congestion_x_avail`, `scene_density_x_avail`, `scene_collision_x_avail`, `scene_trip_x_avail` 제거 (v18 추가분)
+  - 이유: v17 피처셋 정확히 재현하기 위함 (SCENE_COLS 12 + 동일 interactions)
+- **Pseudo-labeling 유지**: v22에서 도입한 train+pseudo_test 300k 재학습 유지
+
+### 목표
+- v23 = v17 정확한 피처셋 + pseudo-labeling → pseudo-labeling 순수 효과 검증
+- v17(10.406) 대비 개선 여부 확인
+
+### 출력 파일
+- `*_v10.csv` → `*_v11.csv`
+
+---
+
 ## v22 (2026-04-29)
 
 ### 변경

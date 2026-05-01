@@ -330,17 +330,6 @@ def make_features(df):
         df["trip_vs_scene_mean"]  = df["avg_trip_distance"] - df["scene_avg_trip_distance_mean"]
         df["trip_vs_scene_ratio"] = df["avg_trip_distance"] / (df["scene_avg_trip_distance_mean"] + EPS)
 
-    # v18: top scene features × availability_ratio_log1p
-    if "availability_ratio_log1p" in df.columns:
-        for scene_col, short in [
-            ("scene_congestion_score_mean",   "congestion"),
-            ("scene_max_zone_density_mean",   "density"),
-            ("scene_near_collision_15m_mean", "collision"),
-            ("scene_avg_trip_distance_mean",  "trip"),
-        ]:
-            if scene_col in df.columns:
-                _s(f"scene_{short}_x_avail", _p(scene_col, "availability_ratio_log1p"))
-
     return df
 
 
@@ -365,16 +354,8 @@ gkf = GroupKFold(n_splits=N_SPLITS)
 
 
 # =========================================================
-# OOF Target Encoding (v18: Bayesian smoothing 적용)
-# smoothing=10: 샘플 수 적은 카테고리의 TE 분산 억제
+# OOF Target Encoding (v17 style: simple mean TE)
 # =========================================================
-TE_SMOOTHING = 10
-
-def _smooth_enc(y_tr, key_tr, gmean, smoothing=TE_SMOOTHING):
-    stats = y_tr.groupby(key_tr).agg(["mean", "count"])
-    smooth = (stats["count"] * stats["mean"] + smoothing * gmean) / (stats["count"] + smoothing)
-    return smooth
-
 def add_oof_te(X, X_test, y, splitter, groups):
     X, X_test = X.copy(), X_test.copy()
     gmean = float(y.mean())
@@ -383,10 +364,9 @@ def add_oof_te(X, X_test, y, splitter, groups):
     for key in [c for c in te_keys if c in X.columns]:
         col = f"te__{key}"
         X[col] = np.nan
-        enc_all = _smooth_enc(y, X[key], gmean)
-        X_test[col] = X_test[key].map(enc_all).fillna(gmean)
+        X_test[col] = X_test[key].map(y.groupby(X[key]).mean()).fillna(gmean)
         for tr_i, va_i in splitter.split(X, y, groups=groups):
-            enc = _smooth_enc(y.iloc[tr_i], X[key].iloc[tr_i], gmean)
+            enc = y.iloc[tr_i].groupby(X[key].iloc[tr_i]).mean()
             X.iloc[va_i, X.columns.get_loc(col)] = (
                 X[key].iloc[va_i].map(enc).fillna(gmean).values
             )
@@ -397,10 +377,9 @@ def add_oof_te(X, X_test, y, splitter, groups):
         ck_t = X_test["layout_id"].astype(str) + "__" + X_test["scenario_id"].astype(str)
         col = "te__layout_scenario"
         X[col] = np.nan
-        enc_all = _smooth_enc(y, ck, gmean)
-        X_test[col] = ck_t.map(enc_all).fillna(gmean)
+        X_test[col] = ck_t.map(y.groupby(ck).mean()).fillna(gmean)
         for tr_i, va_i in splitter.split(X, y, groups=groups):
-            enc = _smooth_enc(y.iloc[tr_i], ck.iloc[tr_i], gmean)
+            enc = y.iloc[tr_i].groupby(ck.iloc[tr_i]).mean()
             X.iloc[va_i, X.columns.get_loc(col)] = ck.iloc[va_i].map(enc).fillna(gmean).values
 
     # layout_cluster × layout_type combo TE
@@ -409,10 +388,9 @@ def add_oof_te(X, X_test, y, splitter, groups):
         ck_t = X_test["layout_cluster"].astype(str) + "__" + X_test["layout_type"].astype(str)
         col = "te__cluster_type"
         X[col] = np.nan
-        enc_all = _smooth_enc(y, ck, gmean)
-        X_test[col] = ck_t.map(enc_all).fillna(gmean)
+        X_test[col] = ck_t.map(y.groupby(ck).mean()).fillna(gmean)
         for tr_i, va_i in splitter.split(X, y, groups=groups):
-            enc = _smooth_enc(y.iloc[tr_i], ck.iloc[tr_i], gmean)
+            enc = y.iloc[tr_i].groupby(ck.iloc[tr_i]).mean()
             X.iloc[va_i, X.columns.get_loc(col)] = ck.iloc[va_i].map(enc).fillna(gmean).values
 
     return X, X_test
@@ -787,7 +765,7 @@ for tag, fi_list in [("xgb", xgb_fi), ("lgb", lgb_fi), ("cat", cat_fi)]:
             .sort_values(ascending=False)
             .reset_index()
         )
-        fi_mean.to_csv(DATA_DIR / f"feature_importance_{tag}_v10.csv", index=False)
+        fi_mean.to_csv(DATA_DIR / f"feature_importance_{tag}_v11.csv", index=False)
         print(f"\nTop 20 {tag.upper()} features:")
         print(fi_mean.head(20).to_string(index=False))
 
@@ -803,7 +781,7 @@ oof_df["y_pred_lgb"]   = lgb_oof
 oof_df["y_pred_cat"]   = cat_oof
 oof_df["y_pred_blend"] = oof_blend
 oof_df["abs_err"]      = np.abs(oof_df["y_true"] - oof_df["y_pred_blend"])
-oof_df.to_csv(DATA_DIR / "oof_ensemble_v10.csv", index=False)
+oof_df.to_csv(DATA_DIR / "oof_ensemble_v11.csv", index=False)
 
 layout_mae = (
     oof_df.groupby("layout_id")["abs_err"]
@@ -819,14 +797,14 @@ print(layout_mae.head(10))
 # =========================================================
 submission = sample_sub.copy()
 submission[TARGET] = final_pred
-submission.to_csv(DATA_DIR / "submission_ensemble_v10.csv", index=False)
+submission.to_csv(DATA_DIR / "submission_ensemble_v11.csv", index=False)
 
-print("\nSaved: submission_ensemble_v10.csv")
-print("Saved: oof_ensemble_v10.csv")
-print("Saved: feature_importance_xgb_v10.csv")
-print("Saved: feature_importance_lgb_v10.csv")
+print("\nSaved: submission_ensemble_v11.csv")
+print("Saved: oof_ensemble_v11.csv")
+print("Saved: feature_importance_xgb_v11.csv")
+print("Saved: feature_importance_lgb_v11.csv")
 if HAS_CATBOOST:
-    print("Saved: feature_importance_cat_v10.csv")
+    print("Saved: feature_importance_cat_v11.csv")
 
 
 # =========================================================
