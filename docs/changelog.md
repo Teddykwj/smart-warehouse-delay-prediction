@@ -2,6 +2,22 @@
 
 ---
 
+## v24 (2026-05-02)
+
+### 추가
+- **Pseudo-labeling 2라운드**: Round 1 재학습 예측 → 새 pseudo-label → Round 2 재학습
+  - Round 1 → `round1_pred` → `pseudo_labels_sqrt_2` → X_aug 재학습 → `final_pred`
+  - 목적: train/test 분포 격차를 반복적으로 좁히기 (v23 Round 1: gap 1.542→1.536)
+
+### 유지
+- v17 정확한 피처셋 (simple mean TE, SCENE_COLS 12, scene×avail 제거)
+- Round 1 pseudo-labeling 동일
+
+### 출력 파일
+- `*_v11.csv` → `*_v12.csv`
+
+---
+
 ## v23 (2026-04-30)
 
 ### 변경 (v17 완전 복귀 + pseudo-labeling 유지)

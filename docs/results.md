@@ -2,9 +2,9 @@
 
 > CV 베스트: **v18** — Blend CV MAE `8.8503`
 >
-> Dacon 베스트: **v23** ★ — Dacon Public `10.3999` (CV MAE `8.8640`)
+> Dacon 베스트: **v24** ★ — Dacon Public `10.3999` (CV MAE `8.8640`)
 >
-> CV-Dacon Gap 추이: 초기 ~1.59 → v15 ~1.60 → v16 1.547 → v17 1.542 → v18 1.645 → v19 1.617 → v20 1.561 → v21 1.612 → v22 1.565 → v23 1.536
+> CV-Dacon Gap 추이: 초기 ~1.59 → v15 ~1.60 → v16 1.547 → v17 1.542 → v18 1.645 → v19 1.617 → v20 1.561 → v21 1.612 → v22 1.565 → v23 1.536 → v24 1.536
 
 | # | Date | Version | XGB CV MAE | LGB CV MAE | Blend CV MAE | XGB Weight | Dacon MAE | CV-Dacon Gap | Notes |
 |---|------|---------|-----------|-----------|-------------|-----------|----------|-------------|-------|
@@ -34,6 +34,7 @@
 | 21 | 2026-04-29 | v21 | 8.869424 | 8.869756 | 8.861560 | 0.50 | 10.473961 | 1.612401 | v17 인코딩 복귀 + SCENE_COLS 18 + percentile rank 유지 — **Optuna trials·CV 값이 v19와 완전 동일** (seed 고정 + 동일 피처셋), SCENE_COLS 18 확장분(+6개)과 percentile rank가 CV↑ Dacon↓ 유발 가능성 높음 |
 | 22 | 2026-04-30 | v22 | 8.875334 | 8.876020 | 8.869048 | 0.52 | 10.434017 | 1.564969 | SCENE_COLS 18→12 복귀, percentile rank 제거, **Pseudo-labeling 첫 적용** (train 250k + test pseudo 50k → 300k 재학습) — v17 미달이나 v18~v21 중 최고 Dacon, gap 1.612→1.565로 개선 |
 | 23 | 2026-05-02 | **v23** ★ | 8.877776 | 8.865889 | 8.864023 | 0.26 | **10.399882** | **1.535859** | **TE simple mean 복귀** (v18 Bayesian smoothing 제거), scene×avail 교차 4개 제거 (v18 추가분), pseudo-labeling 유지 — **Dacon 베스트 갱신** (v17 10.406 → v23 10.400), CV는 v17과 완전 동일 (동일 seed+피처), pseudo-labeling 순수 효과 +0.006 확인 |
+| 24 | 2026-05-02 | **v24** ★ | 8.877776 | 8.865889 | 8.864023 | 0.26 | **10.399864** | **1.535841** | pseudo-labeling **2라운드** 추가 (Round1→Round2 반복) — Round2 aug MAE (XGB 5.968, LGB 4.743) vs Round1 (6.010, 4.775) 소폭 감소, Dacon 개선폭 **0.0000175** (사실상 수렴) → pseudo-labeling은 1라운드에서 수렴 확정 |
 
 ---
 

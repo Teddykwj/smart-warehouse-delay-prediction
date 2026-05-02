@@ -748,9 +748,46 @@ if HAS_CATBOOST and study_cat is not None:
 else:
     cat_aug_test = cat_test  # zeros if not installed
 
-# 최종 예측: 1차 가중치 그대로 적용
-final_pred = np.clip(wx * xgb_aug_test + wl * lgb_aug_test + wc * cat_aug_test, 0, None)
-print(f"Pseudo-labeling complete → final_pred updated")
+# Round 1 예측
+round1_pred = np.clip(wx * xgb_aug_test + wl * lgb_aug_test + wc * cat_aug_test, 0, None)
+
+# === Round 2 pseudo-labeling ===
+print("\n=== Pseudo-labeling Round 2 ===")
+pseudo_labels_sqrt_2 = t_sqrt(round1_pred)
+y_aug_sqrt_2 = np.concatenate([y_sqrt.values, pseudo_labels_sqrt_2])
+
+print("XGB retrain round 2...")
+try:
+    _xgb_aug2 = XGBRegressor(**_xgb_p)
+    _xgb_aug2.fit(X_aug, y_aug_sqrt_2, verbose=False)
+except Exception as e:
+    if "CUDA_ERROR" in str(e) or "cuMem" in str(e):
+        print("  CUDA error → CPU fallback")
+        _xgb_aug2 = XGBRegressor(**{**_xgb_p, "device": "cpu", "n_jobs": -1})
+        _xgb_aug2.fit(X_aug, y_aug_sqrt_2, verbose=False)
+    else:
+        raise
+xgb_aug_test2 = inv_sqrt(np.clip(_xgb_aug2.predict(X_test), 0, None))
+print(f"  XGB aug2 MAE (pseudo check): "
+      f"{mean_absolute_error(y_raw, inv_sqrt(np.clip(_xgb_aug2.predict(X), 0, None))):.4f}")
+
+print("LGB retrain round 2...")
+_lgb_aug2 = LGBMRegressor(**lgb_full_params)
+_lgb_aug2.fit(X_aug, y_aug_sqrt_2, callbacks=[lgb.log_evaluation(period=0)])
+lgb_aug_test2 = inv_sqrt(np.clip(_lgb_aug2.predict(X_test), 0, None))
+print(f"  LGB aug2 MAE (pseudo check): "
+      f"{mean_absolute_error(y_raw, inv_sqrt(np.clip(_lgb_aug2.predict(X), 0, None))):.4f}")
+
+if HAS_CATBOOST and study_cat is not None:
+    print("CAT retrain round 2...")
+    _cat_aug2 = CatBoostRegressor(**cat_full_params)
+    _cat_aug2.fit(X_aug.fillna(0), y_aug_sqrt_2, verbose=0)
+    cat_aug_test2 = inv_sqrt(np.clip(_cat_aug2.predict(X_test.fillna(0)), 0, None))
+else:
+    cat_aug_test2 = cat_aug_test
+
+final_pred = np.clip(wx * xgb_aug_test2 + wl * lgb_aug_test2 + wc * cat_aug_test2, 0, None)
+print(f"Pseudo-labeling round 2 complete → final_pred updated")
 
 
 # =========================================================
@@ -765,7 +802,7 @@ for tag, fi_list in [("xgb", xgb_fi), ("lgb", lgb_fi), ("cat", cat_fi)]:
             .sort_values(ascending=False)
             .reset_index()
         )
-        fi_mean.to_csv(DATA_DIR / f"feature_importance_{tag}_v11.csv", index=False)
+        fi_mean.to_csv(DATA_DIR / f"feature_importance_{tag}_v12.csv", index=False)
         print(f"\nTop 20 {tag.upper()} features:")
         print(fi_mean.head(20).to_string(index=False))
 
@@ -781,7 +818,7 @@ oof_df["y_pred_lgb"]   = lgb_oof
 oof_df["y_pred_cat"]   = cat_oof
 oof_df["y_pred_blend"] = oof_blend
 oof_df["abs_err"]      = np.abs(oof_df["y_true"] - oof_df["y_pred_blend"])
-oof_df.to_csv(DATA_DIR / "oof_ensemble_v11.csv", index=False)
+oof_df.to_csv(DATA_DIR / "oof_ensemble_v12.csv", index=False)
 
 layout_mae = (
     oof_df.groupby("layout_id")["abs_err"]
@@ -797,14 +834,14 @@ print(layout_mae.head(10))
 # =========================================================
 submission = sample_sub.copy()
 submission[TARGET] = final_pred
-submission.to_csv(DATA_DIR / "submission_ensemble_v11.csv", index=False)
+submission.to_csv(DATA_DIR / "submission_ensemble_v12.csv", index=False)
 
-print("\nSaved: submission_ensemble_v11.csv")
-print("Saved: oof_ensemble_v11.csv")
-print("Saved: feature_importance_xgb_v11.csv")
-print("Saved: feature_importance_lgb_v11.csv")
+print("\nSaved: submission_ensemble_v12.csv")
+print("Saved: oof_ensemble_v12.csv")
+print("Saved: feature_importance_xgb_v12.csv")
+print("Saved: feature_importance_lgb_v12.csv")
 if HAS_CATBOOST:
-    print("Saved: feature_importance_cat_v11.csv")
+    print("Saved: feature_importance_cat_v12.csv")
 
 
 # =========================================================
