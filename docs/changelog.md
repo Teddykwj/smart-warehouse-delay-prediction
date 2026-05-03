@@ -2,6 +2,33 @@
 
 ---
 
+## v26 (2026-05-03)
+
+### 추가
+- **Lead features** (6개): 다음 timeslot의 주요 지표 — `lead1_{congestion_score, charging_ratio_raw, low_battery_ratio, order_inflow_15m, blocked_path_15m, near_collision_15m}`
+  - sort+reindex 패턴 (v18 lag 순서 버그 방지), 마지막 슬롯은 scene_mean으로 fillna
+  - 타깃이 "다음 30분 지연"이므로 다음 슬롯 상태가 인과적으로 유효
+- **Scenario vs Layout (svl_*) features** (12개): `svl_{col} = scene_{col}_mean - layout_{col}_mean`
+  - "이 시나리오가 이 레이아웃 기준 대비 얼마나 어려운가" 정보
+  - scene_mean=각 데이터에서 계산, layout_mean=train에서 계산 → test 전이 가능
+
+### 복원
+- **scenario_id**: v25에서 제거했던 drop 블록 완전 삭제 → scenario_id + te__scenario_id 복원
+
+### 유지
+- Layout context (48개, v25)
+- v17 피처셋 + simple mean TE + pseudo-labeling 1라운드
+
+### 결과
+- CV: 8.8563 (신기록) / Dacon: 10.4067 (v24 10.3999 대비 악화)
+- Gap 1.536→1.550 확대 — CV 개선이 test로 전이 안 됨
+- 주요 원인: layout_mean/std가 train 전체로 계산 → val fold 값 포함 → CV leakage 내재
+
+### 출력 파일
+- `*_v13.csv` → `*_v14.csv`
+
+---
+
 ## v25 (2026-05-02)
 
 ### 추가

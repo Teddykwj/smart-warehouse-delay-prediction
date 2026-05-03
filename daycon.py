@@ -197,6 +197,54 @@ def make_layout_context(train_df, test_df):
 train, test = make_layout_context(train, test)
 
 
+# =========================================================
+# v26 NEW: Lead features (next timeslot)
+# 타깃이 "다음 30분 지연"이므로 다음 타임슬롯 상태가 강한 인과 신호
+# test 데이터에 25개 타임슬롯이 모두 존재 → leakage 없이 사용 가능
+# (v18 lag 실패와 다름: lag=과거, lead=미래 → 인과 방향 일치)
+# =========================================================
+LEAD_COLS = [c for c in [
+    "congestion_score", "charging_ratio_raw", "low_battery_ratio",
+    "order_inflow_15m", "blocked_path_15m", "near_collision_15m",
+] if c in train.columns]
+
+def add_lead_features(train_df, test_df):
+    result = []
+    for df in [train_df, test_df]:
+        orig_idx = df.index
+        df_s = df.sort_values(["scenario_id", "timeslot_rank"])
+        for col in LEAD_COLS:
+            lead = df_s.groupby("scenario_id")[col].shift(-1)
+            scene_mean = df_s.groupby("scenario_id")[col].transform("mean")
+            df_s[f"lead1_{col}"] = lead.fillna(scene_mean)
+        result.append(df_s.reindex(orig_idx))
+    print(f"Lead features added: {len(LEAD_COLS)}")
+    return result[0], result[1]
+
+train, test = add_lead_features(train, test)
+
+
+# =========================================================
+# v26 NEW: Scenario vs Layout comparison
+# scene_{col}_mean - layout_{col}_mean
+# "이 시나리오가 이 레이아웃 평균 대비 얼마나 어려운가"
+# train/test 모두 계산 가능 (layout_mean=train 기반, scene_mean=각자 데이터)
+# =========================================================
+def add_scenario_vs_layout(train_df, test_df):
+    train_df, test_df = train_df.copy(), test_df.copy()
+    n = 0
+    for col in LAYOUT_CONTEXT_COLS:
+        sc = f"scene_{col}_mean"
+        lc = f"layout_{col}_mean"
+        if sc in train_df.columns and lc in train_df.columns:
+            train_df[f"svl_{col}"] = train_df[sc] - train_df[lc]
+            test_df[f"svl_{col}"]  = test_df[sc]  - test_df[lc]
+            n += 1
+    print(f"Scenario vs layout features added: {n}")
+    return train_df, test_df
+
+train, test = add_scenario_vs_layout(train, test)
+
 
 # =========================================================
 # Feature engineering (v15 base + v16 + v17 additions)
@@ -456,12 +504,6 @@ X = full.iloc[:n_tr].copy()
 X_test = full.iloc[n_tr:].copy()
 print("encoded cat cols:", cat_cols)
 
-# v25: scenario_id (raw label) + te__scenario_id 제거
-# test 시나리오 전부 unseen → CV에서만 작동하는 leakage 신호 차단
-_drop = [c for c in ["scenario_id", "te__scenario_id"] if c in X.columns]
-X      = X.drop(columns=_drop)
-X_test = X_test.drop(columns=_drop)
-print(f"Dropped leakage cols: {_drop}")
 
 
 # =========================================================
@@ -845,7 +887,7 @@ for tag, fi_list in [("xgb", xgb_fi), ("lgb", lgb_fi), ("cat", cat_fi)]:
             .sort_values(ascending=False)
             .reset_index()
         )
-        fi_mean.to_csv(DATA_DIR / f"feature_importance_{tag}_v13.csv", index=False)
+        fi_mean.to_csv(DATA_DIR / f"feature_importance_{tag}_v14.csv", index=False)
         print(f"\nTop 20 {tag.upper()} features:")
         print(fi_mean.head(20).to_string(index=False))
 
@@ -861,7 +903,7 @@ oof_df["y_pred_lgb"]   = lgb_oof
 oof_df["y_pred_cat"]   = cat_oof
 oof_df["y_pred_blend"] = oof_blend
 oof_df["abs_err"]      = np.abs(oof_df["y_true"] - oof_df["y_pred_blend"])
-oof_df.to_csv(DATA_DIR / "oof_ensemble_v13.csv", index=False)
+oof_df.to_csv(DATA_DIR / "oof_ensemble_v14.csv", index=False)
 
 layout_mae = (
     oof_df.groupby("layout_id")["abs_err"]
@@ -877,14 +919,14 @@ print(layout_mae.head(10))
 # =========================================================
 submission = sample_sub.copy()
 submission[TARGET] = final_pred
-submission.to_csv(DATA_DIR / "submission_ensemble_v13.csv", index=False)
+submission.to_csv(DATA_DIR / "submission_ensemble_v14.csv", index=False)
 
-print("\nSaved: submission_ensemble_v13.csv")
-print("Saved: oof_ensemble_v13.csv")
-print("Saved: feature_importance_xgb_v13.csv")
-print("Saved: feature_importance_lgb_v13.csv")
+print("\nSaved: submission_ensemble_v14.csv")
+print("Saved: oof_ensemble_v14.csv")
+print("Saved: feature_importance_xgb_v14.csv")
+print("Saved: feature_importance_lgb_v14.csv")
 if HAS_CATBOOST:
-    print("Saved: feature_importance_cat_v13.csv")
+    print("Saved: feature_importance_cat_v14.csv")
 
 
 # =========================================================

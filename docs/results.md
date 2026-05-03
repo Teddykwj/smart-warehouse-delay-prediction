@@ -1,10 +1,10 @@
 # Experiment Results
 
-> CV 베스트: **v18** — Blend CV MAE `8.8503`
+> CV 베스트: **v26** — Blend CV MAE `8.8563`
 >
 > Dacon 베스트: **v24** ★ — Dacon Public `10.3999` (CV MAE `8.8640`)
 >
-> CV-Dacon Gap 추이: 초기 ~1.59 → v15 ~1.60 → v16 1.547 → v17 1.542 → v18 1.645 → v19 1.617 → v20 1.561 → v21 1.612 → v22 1.565 → v23 1.536 → v24 1.536
+> CV-Dacon Gap 추이: 초기 ~1.59 → v15 ~1.60 → v16 1.547 → v17 1.542 → v18 1.645 → v19 1.617 → v20 1.561 → v21 1.612 → v22 1.565 → v23 1.536 → v24 1.536 → v25 1.532 → v26 1.550
 
 | # | Date | Version | XGB CV MAE | LGB CV MAE | Blend CV MAE | XGB Weight | Dacon MAE | CV-Dacon Gap | Notes |
 |---|------|---------|-----------|-----------|-------------|-----------|----------|-------------|-------|
@@ -36,6 +36,7 @@
 | 23 | 2026-05-02 | **v23** ★ | 8.877776 | 8.865889 | 8.864023 | 0.26 | **10.399882** | **1.535859** | **TE simple mean 복귀** (v18 Bayesian smoothing 제거), scene×avail 교차 4개 제거 (v18 추가분), pseudo-labeling 유지 — **Dacon 베스트 갱신** (v17 10.406 → v23 10.400), CV는 v17과 완전 동일 (동일 seed+피처), pseudo-labeling 순수 효과 +0.006 확인 |
 | 24 | 2026-05-02 | **v24** ★ | 8.877776 | 8.865889 | 8.864023 | 0.26 | **10.399864** | **1.535841** | pseudo-labeling **2라운드** 추가 (Round1→Round2 반복) — Round2 aug MAE (XGB 5.968, LGB 4.743) vs Round1 (6.010, 4.775) 소폭 감소, Dacon 개선폭 **0.0000175** (사실상 수렴) → pseudo-labeling은 1라운드에서 수렴 확정 |
 | 25 | 2026-05-03 | v25 | 8.891264 | 8.880219 | 8.886952 | 0.18 | 10.419149 | 1.532197 | layout context 피처 48개 추가 + scenario_id/te__scenario_id drop — gap 1.536→1.532(방향 맞음) but CV +0.023 패널티가 더 커서 Dacon 악화. scenario_id 제거 비용 > layout context 이득. layout_context 자체 효과는 유효하나 scenario_id signal이 test에도 여전히 기여함을 확인 |
+| 26 | 2026-05-03 | v26 | 8.866085 | 8.857509 | 8.856275 | 0.40 | 10.406728 | 1.550453 | layout context(48) + lead features(6) + svl features(12) + scenario_id 복원, 319 features — CV 신기록(8.8563) but Dacon v24 대비 악화(+0.007), gap 1.536→1.550 확대. XGB 1위: svl_max_zone_density, 3위: lead1_congestion_score; LGB scenario_id 9481→5104(svl 피처가 신호 분담). CV↑/Dacon↓ = 새 피처가 CV에서만 유효한 패턴 반복 |
 
 ---
 
@@ -59,3 +60,6 @@
 - **SCENE_COLS 18 확장 vs 12**: v21(18개)→v22(12개) 복귀 시 Dacon 10.474→10.434 — SCENE_COLS 추가 6개는 과적합 피처로 확정
 - **Bayesian TE 역효과**: v18 smoothed TE → v23에서 simple mean(v17 방식)으로 복귀 시 Dacon 개선 — smoothing이 오히려 정보 손실 유발
 - **v17 피처셋 + pseudo-labeling = 최적 조합 (v23)**: CV 동일(8.8640), Dacon 10.406→10.400, gap 1.542→1.536 — pseudo-labeling의 순수 효과 +0.006 확정
+- **layout context + lead + svl (v26)**: CV 8.856(신기록) but Dacon 10.407(v24 대비 악화) — CV 개선이 전부 leakage. layout_mean/std가 train 전체로 계산되어 val fold 값이 포함 → 미세 CV leakage. svl 피처(scene_mean - layout_mean)도 동일 문제 내포. 피처 자체가 test에서 유효하더라도 CV leakage로 인해 Dacon으로 전이 안 됨
+- **lead features**: lead1_congestion_score가 XGB 3위(0.038) — 신호 자체는 유효. 단독으로 테스트 필요
+- **고오차 레이아웃 v26**: WH_051(33.5), WH_073(33.4), WH_217(32.4), WH_049(32.1), WH_098(29.6) — v24 대비 큰 변화 없음
