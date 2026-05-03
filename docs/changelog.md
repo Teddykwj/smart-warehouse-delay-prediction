@@ -2,6 +2,30 @@
 
 ---
 
+## v25 (2026-05-02)
+
+### 추가
+- **Layout context 피처** (SCENE_COLS 12개 × 4 = ~48개):
+  - `layout_{col}_mean`, `layout_{col}_std`: train 데이터로 레이아웃별 운영 기준선 계산
+  - `{col}_vs_layout`: 현재값 - 레이아웃 평균 (절대 편차)
+  - `{col}_vs_layout_norm`: (현재값 - 레이아웃 평균) / 레이아웃 표준편차 (정규화 편차)
+  - unseen test layout → 전역 mean/std로 fallback
+  - **의의**: scene_*이 시나리오 기준이라면, layout_*은 레이아웃 기준 → test seen layout(250/300)에 그대로 전이 가능
+
+### 제거
+- **`scenario_id` (label-encoded) + `te__scenario_id`**: 인코딩 후 명시적 drop
+  - LGB #1 피처(importance 9481)이지만 test 시나리오 전부 unseen → CV 전용 leakage 신호
+  - v19 fallback 버그 없이 정확히 적용 (encoding 후 drop)
+  - `te__layout_scenario`는 유지 (레이아웃 통한 간접 시나리오 신호)
+
+### 유지
+- v17 피처셋 + simple mean TE + pseudo-labeling 1라운드
+
+### 출력 파일
+- `*_v12.csv` → `*_v13.csv`
+
+---
+
 ## v24 (2026-05-02)
 
 ### 추가

@@ -161,6 +161,42 @@ test  = add_timeslot_rank(test)
 print("Timeslot rank features added")
 
 
+# =========================================================
+# v25 NEW: Layout context features
+# 시나리오 기준(scene_*)이 아닌 레이아웃 기준 운영 기준선
+# test seen layout(250/300)에 그대로 적용 가능 → 전이 가능 신호
+# =========================================================
+LAYOUT_CONTEXT_COLS = [c for c in SCENE_COLS if c in train.columns]
+
+def make_layout_context(train_df, test_df):
+    # 레이아웃별 평균/표준편차: train 데이터로만 계산
+    layout_stats = train_df.groupby("layout_id")[LAYOUT_CONTEXT_COLS].agg(["mean", "std"])
+    layout_stats.columns = [f"layout_{col}_{stat}" for col, stat in layout_stats.columns]
+    layout_stats = layout_stats.reset_index()
+
+    global_means = {f"layout_{c}_mean": train_df[c].mean() for c in LAYOUT_CONTEXT_COLS}
+    global_stds  = {f"layout_{c}_std":  train_df[c].std()  for c in LAYOUT_CONTEXT_COLS}
+
+    result = []
+    for df in [train_df, test_df]:
+        df = df.merge(layout_stats, on="layout_id", how="left")
+        for c in LAYOUT_CONTEXT_COLS:
+            mc = f"layout_{c}_mean"
+            sc = f"layout_{c}_std"
+            df[mc] = df[mc].fillna(global_means[mc])
+            df[sc] = df[sc].fillna(global_stds[sc])
+            if c in df.columns:
+                df[f"{c}_vs_layout"] = df[c] - df[mc]
+                df[f"{c}_vs_layout_norm"] = (df[c] - df[mc]) / (df[sc] + EPS)
+        result.append(df)
+
+    n_new = len(LAYOUT_CONTEXT_COLS) * 4  # mean, std, vs, vs_norm
+    print(f"Layout context features added: ~{n_new}")
+    return result[0], result[1]
+
+train, test = make_layout_context(train, test)
+
+
 
 # =========================================================
 # Feature engineering (v15 base + v16 + v17 additions)
@@ -419,6 +455,13 @@ n_tr = len(X)
 X = full.iloc[:n_tr].copy()
 X_test = full.iloc[n_tr:].copy()
 print("encoded cat cols:", cat_cols)
+
+# v25: scenario_id (raw label) + te__scenario_id 제거
+# test 시나리오 전부 unseen → CV에서만 작동하는 leakage 신호 차단
+_drop = [c for c in ["scenario_id", "te__scenario_id"] if c in X.columns]
+X      = X.drop(columns=_drop)
+X_test = X_test.drop(columns=_drop)
+print(f"Dropped leakage cols: {_drop}")
 
 
 # =========================================================
@@ -802,7 +845,7 @@ for tag, fi_list in [("xgb", xgb_fi), ("lgb", lgb_fi), ("cat", cat_fi)]:
             .sort_values(ascending=False)
             .reset_index()
         )
-        fi_mean.to_csv(DATA_DIR / f"feature_importance_{tag}_v12.csv", index=False)
+        fi_mean.to_csv(DATA_DIR / f"feature_importance_{tag}_v13.csv", index=False)
         print(f"\nTop 20 {tag.upper()} features:")
         print(fi_mean.head(20).to_string(index=False))
 
@@ -818,7 +861,7 @@ oof_df["y_pred_lgb"]   = lgb_oof
 oof_df["y_pred_cat"]   = cat_oof
 oof_df["y_pred_blend"] = oof_blend
 oof_df["abs_err"]      = np.abs(oof_df["y_true"] - oof_df["y_pred_blend"])
-oof_df.to_csv(DATA_DIR / "oof_ensemble_v12.csv", index=False)
+oof_df.to_csv(DATA_DIR / "oof_ensemble_v13.csv", index=False)
 
 layout_mae = (
     oof_df.groupby("layout_id")["abs_err"]
@@ -834,14 +877,14 @@ print(layout_mae.head(10))
 # =========================================================
 submission = sample_sub.copy()
 submission[TARGET] = final_pred
-submission.to_csv(DATA_DIR / "submission_ensemble_v12.csv", index=False)
+submission.to_csv(DATA_DIR / "submission_ensemble_v13.csv", index=False)
 
-print("\nSaved: submission_ensemble_v12.csv")
-print("Saved: oof_ensemble_v12.csv")
-print("Saved: feature_importance_xgb_v12.csv")
-print("Saved: feature_importance_lgb_v12.csv")
+print("\nSaved: submission_ensemble_v13.csv")
+print("Saved: oof_ensemble_v13.csv")
+print("Saved: feature_importance_xgb_v13.csv")
+print("Saved: feature_importance_lgb_v13.csv")
 if HAS_CATBOOST:
-    print("Saved: feature_importance_cat_v12.csv")
+    print("Saved: feature_importance_cat_v13.csv")
 
 
 # =========================================================

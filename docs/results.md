@@ -35,6 +35,7 @@
 | 22 | 2026-04-30 | v22 | 8.875334 | 8.876020 | 8.869048 | 0.52 | 10.434017 | 1.564969 | SCENE_COLS 18→12 복귀, percentile rank 제거, **Pseudo-labeling 첫 적용** (train 250k + test pseudo 50k → 300k 재학습) — v17 미달이나 v18~v21 중 최고 Dacon, gap 1.612→1.565로 개선 |
 | 23 | 2026-05-02 | **v23** ★ | 8.877776 | 8.865889 | 8.864023 | 0.26 | **10.399882** | **1.535859** | **TE simple mean 복귀** (v18 Bayesian smoothing 제거), scene×avail 교차 4개 제거 (v18 추가분), pseudo-labeling 유지 — **Dacon 베스트 갱신** (v17 10.406 → v23 10.400), CV는 v17과 완전 동일 (동일 seed+피처), pseudo-labeling 순수 효과 +0.006 확인 |
 | 24 | 2026-05-02 | **v24** ★ | 8.877776 | 8.865889 | 8.864023 | 0.26 | **10.399864** | **1.535841** | pseudo-labeling **2라운드** 추가 (Round1→Round2 반복) — Round2 aug MAE (XGB 5.968, LGB 4.743) vs Round1 (6.010, 4.775) 소폭 감소, Dacon 개선폭 **0.0000175** (사실상 수렴) → pseudo-labeling은 1라운드에서 수렴 확정 |
+| 25 | 2026-05-03 | v25 | 8.891264 | 8.880219 | 8.886952 | 0.18 | 10.419149 | 1.532197 | layout context 피처 48개 추가 + scenario_id/te__scenario_id drop — gap 1.536→1.532(방향 맞음) but CV +0.023 패널티가 더 커서 Dacon 악화. scenario_id 제거 비용 > layout context 이득. layout_context 자체 효과는 유효하나 scenario_id signal이 test에도 여전히 기여함을 확인 |
 
 ---
 
