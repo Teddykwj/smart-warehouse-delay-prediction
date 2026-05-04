@@ -40,6 +40,7 @@ N_TRIALS_LGB = 80
 N_TRIALS_CAT = 40
 EPS = 1e-6
 N_LAYOUT_CLUSTERS = 20
+ENSEMBLE_SEEDS = [42, 123, 456]
 
 
 # =========================================================
@@ -159,91 +160,6 @@ def add_timeslot_rank(df):
 train = add_timeslot_rank(train)
 test  = add_timeslot_rank(test)
 print("Timeslot rank features added")
-
-
-# =========================================================
-# v25 NEW: Layout context features
-# 시나리오 기준(scene_*)이 아닌 레이아웃 기준 운영 기준선
-# test seen layout(250/300)에 그대로 적용 가능 → 전이 가능 신호
-# =========================================================
-LAYOUT_CONTEXT_COLS = [c for c in SCENE_COLS if c in train.columns]
-
-def make_layout_context(train_df, test_df):
-    # 레이아웃별 평균/표준편차: train 데이터로만 계산
-    layout_stats = train_df.groupby("layout_id")[LAYOUT_CONTEXT_COLS].agg(["mean", "std"])
-    layout_stats.columns = [f"layout_{col}_{stat}" for col, stat in layout_stats.columns]
-    layout_stats = layout_stats.reset_index()
-
-    global_means = {f"layout_{c}_mean": train_df[c].mean() for c in LAYOUT_CONTEXT_COLS}
-    global_stds  = {f"layout_{c}_std":  train_df[c].std()  for c in LAYOUT_CONTEXT_COLS}
-
-    result = []
-    for df in [train_df, test_df]:
-        df = df.merge(layout_stats, on="layout_id", how="left")
-        for c in LAYOUT_CONTEXT_COLS:
-            mc = f"layout_{c}_mean"
-            sc = f"layout_{c}_std"
-            df[mc] = df[mc].fillna(global_means[mc])
-            df[sc] = df[sc].fillna(global_stds[sc])
-            if c in df.columns:
-                df[f"{c}_vs_layout"] = df[c] - df[mc]
-                df[f"{c}_vs_layout_norm"] = (df[c] - df[mc]) / (df[sc] + EPS)
-        result.append(df)
-
-    n_new = len(LAYOUT_CONTEXT_COLS) * 4  # mean, std, vs, vs_norm
-    print(f"Layout context features added: ~{n_new}")
-    return result[0], result[1]
-
-train, test = make_layout_context(train, test)
-
-
-# =========================================================
-# v26 NEW: Lead features (next timeslot)
-# 타깃이 "다음 30분 지연"이므로 다음 타임슬롯 상태가 강한 인과 신호
-# test 데이터에 25개 타임슬롯이 모두 존재 → leakage 없이 사용 가능
-# (v18 lag 실패와 다름: lag=과거, lead=미래 → 인과 방향 일치)
-# =========================================================
-LEAD_COLS = [c for c in [
-    "congestion_score", "charging_ratio_raw", "low_battery_ratio",
-    "order_inflow_15m", "blocked_path_15m", "near_collision_15m",
-] if c in train.columns]
-
-def add_lead_features(train_df, test_df):
-    result = []
-    for df in [train_df, test_df]:
-        orig_idx = df.index
-        df_s = df.sort_values(["scenario_id", "timeslot_rank"])
-        for col in LEAD_COLS:
-            lead = df_s.groupby("scenario_id")[col].shift(-1)
-            scene_mean = df_s.groupby("scenario_id")[col].transform("mean")
-            df_s[f"lead1_{col}"] = lead.fillna(scene_mean)
-        result.append(df_s.reindex(orig_idx))
-    print(f"Lead features added: {len(LEAD_COLS)}")
-    return result[0], result[1]
-
-train, test = add_lead_features(train, test)
-
-
-# =========================================================
-# v26 NEW: Scenario vs Layout comparison
-# scene_{col}_mean - layout_{col}_mean
-# "이 시나리오가 이 레이아웃 평균 대비 얼마나 어려운가"
-# train/test 모두 계산 가능 (layout_mean=train 기반, scene_mean=각자 데이터)
-# =========================================================
-def add_scenario_vs_layout(train_df, test_df):
-    train_df, test_df = train_df.copy(), test_df.copy()
-    n = 0
-    for col in LAYOUT_CONTEXT_COLS:
-        sc = f"scene_{col}_mean"
-        lc = f"layout_{col}_mean"
-        if sc in train_df.columns and lc in train_df.columns:
-            train_df[f"svl_{col}"] = train_df[sc] - train_df[lc]
-            test_df[f"svl_{col}"]  = test_df[sc]  - test_df[lc]
-            n += 1
-    print(f"Scenario vs layout features added: {n}")
-    return train_df, test_df
-
-train, test = add_scenario_vs_layout(train, test)
 
 
 # =========================================================
@@ -725,23 +641,47 @@ def run_final_cv(ModelCls, model_params, is_lgb=False, is_cat=False):
 
 
 print("\n==============================")
-print("XGBoost Final CV")
+print(f"XGBoost Final CV ({len(ENSEMBLE_SEEDS)}-seed ensemble)")
 print("==============================")
 xgb_full_params = {**XGB_BASE, **study_xgb.best_params}
-xgb_oof, xgb_test, xgb_fi = run_final_cv(XGBRegressor, xgb_full_params, is_lgb=False)
+all_xgb_oof, all_xgb_test, xgb_fi = [], [], []
+for _seed in ENSEMBLE_SEEDS:
+    _params = {**xgb_full_params, "random_state": _seed}
+    _oof, _test, _fi = run_final_cv(XGBRegressor, _params, is_lgb=False)
+    all_xgb_oof.append(_oof); all_xgb_test.append(_test); xgb_fi.extend(_fi)
+    print(f"  [Seed {_seed}] CV MAE: {mean_absolute_error(y_raw, _oof):.6f}")
+xgb_oof  = np.mean(all_xgb_oof, axis=0)
+xgb_test = np.mean(all_xgb_test, axis=0)
+print(f"XGB Ensemble CV MAE: {mean_absolute_error(y_raw, xgb_oof):.6f}")
 
-print("==============================")
-print("LightGBM Final CV")
+print("\n==============================")
+print(f"LightGBM Final CV ({len(ENSEMBLE_SEEDS)}-seed ensemble)")
 print("==============================")
 lgb_full_params = {**LGB_BASE, **study_lgb.best_params}
-lgb_oof, lgb_test, lgb_fi = run_final_cv(LGBMRegressor, lgb_full_params, is_lgb=True)
+all_lgb_oof, all_lgb_test, lgb_fi = [], [], []
+for _seed in ENSEMBLE_SEEDS:
+    _params = {**lgb_full_params, "random_state": _seed}
+    _oof, _test, _fi = run_final_cv(LGBMRegressor, _params, is_lgb=True)
+    all_lgb_oof.append(_oof); all_lgb_test.append(_test); lgb_fi.extend(_fi)
+    print(f"  [Seed {_seed}] CV MAE: {mean_absolute_error(y_raw, _oof):.6f}")
+lgb_oof  = np.mean(all_lgb_oof, axis=0)
+lgb_test = np.mean(all_lgb_test, axis=0)
+print(f"LGB Ensemble CV MAE: {mean_absolute_error(y_raw, lgb_oof):.6f}")
 
 if HAS_CATBOOST and study_cat is not None:
-    print("==============================")
-    print("CatBoost Final CV")
+    print("\n==============================")
+    print(f"CatBoost Final CV ({len(ENSEMBLE_SEEDS)}-seed ensemble)")
     print("==============================")
     cat_full_params = {**CAT_BASE, **study_cat.best_params}
-    cat_oof, cat_test, cat_fi = run_final_cv(CatBoostRegressor, cat_full_params, is_cat=True)
+    all_cat_oof, all_cat_test, cat_fi = [], [], []
+    for _seed in ENSEMBLE_SEEDS:
+        _params = {**cat_full_params, "random_seed": _seed}
+        _oof, _test, _fi = run_final_cv(CatBoostRegressor, _params, is_cat=True)
+        all_cat_oof.append(_oof); all_cat_test.append(_test); cat_fi.extend(_fi)
+        print(f"  [Seed {_seed}] CV MAE: {mean_absolute_error(y_raw, _oof):.6f}")
+    cat_oof  = np.mean(all_cat_oof, axis=0)
+    cat_test = np.mean(all_cat_test, axis=0)
+    print(f"CAT Ensemble CV MAE: {mean_absolute_error(y_raw, cat_oof):.6f}")
 else:
     cat_oof  = np.zeros(len(X))
     cat_test = np.zeros(len(X_test))
@@ -887,7 +827,7 @@ for tag, fi_list in [("xgb", xgb_fi), ("lgb", lgb_fi), ("cat", cat_fi)]:
             .sort_values(ascending=False)
             .reset_index()
         )
-        fi_mean.to_csv(DATA_DIR / f"feature_importance_{tag}_v14.csv", index=False)
+        fi_mean.to_csv(DATA_DIR / f"feature_importance_{tag}_v15.csv", index=False)
         print(f"\nTop 20 {tag.upper()} features:")
         print(fi_mean.head(20).to_string(index=False))
 
@@ -903,7 +843,7 @@ oof_df["y_pred_lgb"]   = lgb_oof
 oof_df["y_pred_cat"]   = cat_oof
 oof_df["y_pred_blend"] = oof_blend
 oof_df["abs_err"]      = np.abs(oof_df["y_true"] - oof_df["y_pred_blend"])
-oof_df.to_csv(DATA_DIR / "oof_ensemble_v14.csv", index=False)
+oof_df.to_csv(DATA_DIR / "oof_ensemble_v15.csv", index=False)
 
 layout_mae = (
     oof_df.groupby("layout_id")["abs_err"]
@@ -919,14 +859,14 @@ print(layout_mae.head(10))
 # =========================================================
 submission = sample_sub.copy()
 submission[TARGET] = final_pred
-submission.to_csv(DATA_DIR / "submission_ensemble_v14.csv", index=False)
+submission.to_csv(DATA_DIR / "submission_ensemble_v15.csv", index=False)
 
-print("\nSaved: submission_ensemble_v14.csv")
-print("Saved: oof_ensemble_v14.csv")
-print("Saved: feature_importance_xgb_v14.csv")
-print("Saved: feature_importance_lgb_v14.csv")
+print("\nSaved: submission_ensemble_v15.csv")
+print("Saved: oof_ensemble_v15.csv")
+print("Saved: feature_importance_xgb_v15.csv")
+print("Saved: feature_importance_lgb_v15.csv")
 if HAS_CATBOOST:
-    print("Saved: feature_importance_cat_v14.csv")
+    print("Saved: feature_importance_cat_v15.csv")
 
 
 # =========================================================
