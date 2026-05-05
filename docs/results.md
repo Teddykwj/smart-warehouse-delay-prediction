@@ -2,9 +2,9 @@
 
 > CV 베스트: **v26** — Blend CV MAE `8.8563`
 >
-> Dacon 베스트: **v24** ★ — Dacon Public `10.3999` (CV MAE `8.8640`)
+> Dacon 베스트: **v27** ★ — Dacon Public `10.3987` (CV MAE `8.8631`)
 >
-> CV-Dacon Gap 추이: 초기 ~1.59 → v15 ~1.60 → v16 1.547 → v17 1.542 → v18 1.645 → v19 1.617 → v20 1.561 → v21 1.612 → v22 1.565 → v23 1.536 → v24 1.536 → v25 1.532 → v26 1.550
+> CV-Dacon Gap 추이: 초기 ~1.59 → v15 ~1.60 → v16 1.547 → v17 1.542 → v18 1.645 → v19 1.617 → v20 1.561 → v21 1.612 → v22 1.565 → v23 1.536 → v24 1.536 → v25 1.532 → v26 1.550 → v27 1.536
 
 | # | Date | Version | XGB CV MAE | LGB CV MAE | Blend CV MAE | XGB Weight | Dacon MAE | CV-Dacon Gap | Notes |
 |---|------|---------|-----------|-----------|-------------|-----------|----------|-------------|-------|
@@ -37,6 +37,7 @@
 | 24 | 2026-05-02 | **v24** ★ | 8.877776 | 8.865889 | 8.864023 | 0.26 | **10.399864** | **1.535841** | pseudo-labeling **2라운드** 추가 (Round1→Round2 반복) — Round2 aug MAE (XGB 5.968, LGB 4.743) vs Round1 (6.010, 4.775) 소폭 감소, Dacon 개선폭 **0.0000175** (사실상 수렴) → pseudo-labeling은 1라운드에서 수렴 확정 |
 | 25 | 2026-05-03 | v25 | 8.891264 | 8.880219 | 8.886952 | 0.18 | 10.419149 | 1.532197 | layout context 피처 48개 추가 + scenario_id/te__scenario_id drop — gap 1.536→1.532(방향 맞음) but CV +0.023 패널티가 더 커서 Dacon 악화. scenario_id 제거 비용 > layout context 이득. layout_context 자체 효과는 유효하나 scenario_id signal이 test에도 여전히 기여함을 확인 |
 | 26 | 2026-05-03 | v26 | 8.866085 | 8.857509 | 8.856275 | 0.40 | 10.406728 | 1.550453 | layout context(48) + lead features(6) + svl features(12) + scenario_id 복원, 319 features — CV 신기록(8.8563) but Dacon v24 대비 악화(+0.007), gap 1.536→1.550 확대. XGB 1위: svl_max_zone_density, 3위: lead1_congestion_score; LGB scenario_id 9481→5104(svl 피처가 신호 분담). CV↑/Dacon↓ = 새 피처가 CV에서만 유효한 패턴 반복 |
+| 27 | 2026-05-06 | **v27** ★ | 8.877776 | 8.863526 | 8.863057 | 0.10 | **10.398650** | **1.535593** | **3-seed 앙상블** (seeds 42/123/456) — v23 피처셋 복귀(layout/lead/svl 제거), 피처 변경 없이 분산 감소로 Dacon 신기록. XGB Ensemble 8.8762, LGB Ensemble 8.8632, LGB weight 0.90으로 급증(앙상블로 XGB 분산↓→LGB 우위 명확화). gap 1.550→1.536 복귀 |
 
 ---
 
@@ -63,3 +64,4 @@
 - **layout context + lead + svl (v26)**: CV 8.856(신기록) but Dacon 10.407(v24 대비 악화) — CV 개선이 전부 leakage. layout_mean/std가 train 전체로 계산되어 val fold 값이 포함 → 미세 CV leakage. svl 피처(scene_mean - layout_mean)도 동일 문제 내포. 피처 자체가 test에서 유효하더라도 CV leakage로 인해 Dacon으로 전이 안 됨
 - **lead features**: lead1_congestion_score가 XGB 3위(0.038) — 신호 자체는 유효. 단독으로 테스트 필요
 - **고오차 레이아웃 v26**: WH_051(33.5), WH_073(33.4), WH_217(32.4), WH_049(32.1), WH_098(29.6) — v24 대비 큰 변화 없음
+- **3-seed 앙상블 효과 (v27)**: Dacon 10.3999→10.3987 (+0.0012), gap 1.5358→1.5356 — 분산 감소로 안정적 소폭 개선. XGB weight 0.26→0.10으로 급감: 앙상블 후 XGB 분산이 줄어 LGB 대비 우위 차이가 더 명확해짐. 피처 변경 없이 regression 위험 없는 안전한 개선 방법 확인
